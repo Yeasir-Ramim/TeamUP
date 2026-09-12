@@ -17,6 +17,7 @@ import {
   ProjectRole,
   MemberStatus,
   ProjectStatus,
+  ExperienceLevel,
   Prisma,
 } from '@prisma/client';
 
@@ -52,12 +53,15 @@ export class ProjectsService {
    */
   private async resolveSkills(
     skillsInput?: RequiredSkillItemDto[],
-  ): Promise<Array<{ skillId: string; minimumExperience: any }>> {
+  ): Promise<Array<{ skillId: string; minimumExperience: ExperienceLevel }>> {
     if (!skillsInput || skillsInput.length === 0) {
       return [];
     }
 
-    const resolved: Array<{ skillId: string; minimumExperience: any }> = [];
+    const resolved: Array<{
+      skillId: string;
+      minimumExperience: ExperienceLevel;
+    }> = [];
 
     for (const item of skillsInput) {
       let finalSkillId = item.skillId;
@@ -89,7 +93,7 @@ export class ProjectsService {
 
         resolved.push({
           skillId: finalSkillId,
-          minimumExperience: item.minimumExperience ?? 'BEGINNER',
+          minimumExperience: item.minimumExperience ?? ExperienceLevel.BEGINNER,
         });
       }
     }
@@ -311,10 +315,116 @@ export class ProjectsService {
   }
 
   /**
-   * Search projects (alias for search endpoint)
+   * Multi-criteria faceted project search (Design Doc §5.1 / SearchScreen.tsx)
+   * Returns normalized ProjectListing[] with flat requiredSkills, ownerName, and memberCount.
    */
   async search(query: ProjectFilterDto) {
-    return this.findAll(query);
+    const {
+      search,
+      domain,
+      tech,
+      semester,
+      status,
+      skillId,
+      page = 1,
+      limit = 20,
+    } = query;
+
+    const where: Prisma.ProjectWhereInput = {};
+
+    if (search && search.trim()) {
+      const keyword = search.trim();
+      where.OR = [
+        { title: { contains: keyword, mode: 'insensitive' } },
+        { description: { contains: keyword, mode: 'insensitive' } },
+        { domain: { contains: keyword, mode: 'insensitive' } },
+      ];
+    }
+
+    if (domain && domain !== 'All') {
+      where.domain = { contains: domain, mode: 'insensitive' };
+    }
+
+    if (semester && semester !== 'All') {
+      where.semester = { contains: semester, mode: 'insensitive' };
+    }
+
+    if (status && (status as string) !== 'All') {
+      where.status = status;
+    }
+
+    if (skillId) {
+      where.requiredSkills = {
+        some: { skillId },
+      };
+    }
+
+    if (tech && tech !== 'All') {
+      where.requiredSkills = {
+        some: {
+          skill: {
+            name: { contains: tech, mode: 'insensitive' },
+          },
+        },
+      };
+    }
+
+    const skip = (page - 1) * limit;
+
+    const rawProjects = await this.prisma.project.findMany({
+      where,
+      skip,
+      take: limit,
+      orderBy: { createdAt: 'desc' },
+      include: {
+        creator: {
+          select: {
+            id: true,
+            email: true,
+            profile: {
+              select: {
+                fullName: true,
+                avatarUrl: true,
+              },
+            },
+          },
+        },
+        requiredSkills: {
+          include: {
+            skill: true,
+          },
+        },
+        members: {
+          where: { status: MemberStatus.ACCEPTED },
+          select: { id: true },
+        },
+        _count: {
+          select: {
+            members: {
+              where: { status: MemberStatus.ACCEPTED },
+            },
+          },
+        },
+      },
+    });
+
+    // Normalize for React Native ProjectListing contract
+    return rawProjects.map((p) => ({
+      id: p.id,
+      title: p.title,
+      description: p.description,
+      domain: p.domain,
+      semester: p.semester,
+      status: p.status,
+      requiredSkills: p.requiredSkills.map((rs) => rs.skill.name),
+      ownerName:
+        p.creator?.profile?.fullName ||
+        p.creator?.email?.split('@')[0] ||
+        'Unknown',
+      memberCount: p._count?.members ?? p.members?.length ?? 0,
+      maxMembers: p.maxMembers,
+      createdAt: p.createdAt,
+    }));
   }
 
   /**
@@ -426,7 +536,7 @@ export class ProjectsService {
 
     let resolvedSkills: Array<{
       skillId: string;
-      minimumExperience: any;
+      minimumExperience: ExperienceLevel;
     }> | null = null;
     if (dto.requiredSkills) {
       resolvedSkills = await this.resolveSkills(dto.requiredSkills);

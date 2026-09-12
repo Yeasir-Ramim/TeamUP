@@ -6,6 +6,7 @@ import {
   Delete,
   Body,
   Param,
+  Query,
   UseGuards,
   HttpCode,
   HttpStatus,
@@ -13,6 +14,7 @@ import {
 import { ProfilesService } from './profiles.service';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { AddProfileSkillDto } from './dto/add-profile-skill.dto';
+import { ProfileFilterDto } from './dto/profile-filter.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '../auth/interfaces/jwt-payload.interface';
@@ -53,6 +55,11 @@ export class ProfilesController {
     @Param('skillId') skillId: string,
   ) {
     return this.profilesService.removeSkillFromProfile(user.userId, skillId);
+  }
+
+  @Get('search')
+  async searchProfiles(@Query() query: ProfileFilterDto) {
+    return this.profilesService.searchProfiles(query);
   }
 
   @Get(':id/github')

@@ -12,6 +12,7 @@ describe('ProfilesController', () => {
     upsertProfile: jest.fn(),
     addSkillToProfile: jest.fn(),
     removeSkillFromProfile: jest.fn(),
+    searchProfiles: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -112,5 +113,15 @@ describe('ProfilesController', () => {
     const result = await controller.getProfileById('p-1');
     expect(result).toEqual({ id: 'p-1' });
     expect(mockProfilesService.getProfileById).toHaveBeenCalledWith('p-1');
+  });
+
+  it('should call searchProfiles with query dto', async () => {
+    const query = { department: 'CSE', skill: 'NestJS' };
+    const mockResponse = { profiles: [{ id: 'p-1' }], meta: { total: 1 } };
+    mockProfilesService.searchProfiles.mockResolvedValue(mockResponse);
+
+    const result = await controller.searchProfiles(query);
+    expect(result).toEqual(mockResponse);
+    expect(mockProfilesService.searchProfiles).toHaveBeenCalledWith(query);
   });
 });
