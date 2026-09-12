@@ -19,6 +19,8 @@ describe('ProfilesService', () => {
       findFirst: jest.fn(),
       create: jest.fn(),
       upsert: jest.fn(),
+      count: jest.fn(),
+      findMany: jest.fn(),
     },
     skill: {
       findUnique: jest.fn(),
@@ -47,6 +49,7 @@ describe('ProfilesService', () => {
 
   it('should be defined', () => {
     expect(service).toBeDefined();
+    expect(githubService).toBeDefined();
   });
 
   describe('getMyProfile', () => {
@@ -216,6 +219,109 @@ describe('ProfilesService', () => {
       expect(result).toEqual(mockStats);
       expect(mockGithubService.getStatsForProfile).toHaveBeenCalledWith(
         'prof-1',
+      );
+    });
+  });
+
+  describe('searchProfiles', () => {
+    it('should query prisma with combined filters and return profiles with meta', async () => {
+      const mockList = [
+        {
+          id: 'p-1',
+          fullName: 'Alice Bob',
+          department: 'CSE',
+          skills: [{ skill: { name: 'React' } }],
+        },
+      ];
+      mockPrismaService.profile.count.mockResolvedValue(1);
+      mockPrismaService.profile.findMany.mockResolvedValue(mockList);
+
+      const query = {
+        search: 'Alice',
+        skill: 'React',
+        department: 'CSE',
+        semester: 'Fall 2026',
+        experienceLevel: ExperienceLevel.INTERMEDIATE,
+        availability: true,
+        page: 1,
+        limit: 10,
+      };
+
+      const result = await service.searchProfiles(query);
+
+      expect(result).toEqual({
+        profiles: mockList,
+        meta: {
+          total: 1,
+          page: 1,
+          limit: 10,
+          totalPages: 1,
+        },
+      });
+
+      expect(mockPrismaService.profile.findMany).toHaveBeenCalledWith({
+        where: {
+          OR: [
+            { fullName: { contains: 'Alice', mode: 'insensitive' } },
+            { bio: { contains: 'Alice', mode: 'insensitive' } },
+            { department: { contains: 'Alice', mode: 'insensitive' } },
+          ],
+          department: { contains: 'CSE', mode: 'insensitive' },
+          semester: { contains: 'Fall 2026', mode: 'insensitive' },
+          experienceLevel: ExperienceLevel.INTERMEDIATE,
+          availability: true,
+          skills: {
+            some: {
+              skill: {
+                name: { contains: 'React', mode: 'insensitive' },
+              },
+            },
+          },
+        },
+        skip: 0,
+        take: 10,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          user: {
+            select: {
+              id: true,
+              email: true,
+              role: true,
+            },
+          },
+          skills: {
+            include: {
+              skill: true,
+            },
+          },
+        },
+      });
+    });
+
+    it('should ignore "All" values for department, semester, and skill', async () => {
+      mockPrismaService.profile.count.mockResolvedValue(0);
+      mockPrismaService.profile.findMany.mockResolvedValue([]);
+
+      const result = await service.searchProfiles({
+        department: 'All',
+        semester: 'All',
+        skill: 'All',
+      });
+
+      expect(result).toEqual({
+        profiles: [],
+        meta: {
+          total: 0,
+          page: 1,
+          limit: 20,
+          totalPages: 0,
+        },
+      });
+
+      expect(mockPrismaService.profile.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: {},
+        }),
       );
     });
   });

@@ -1,5 +1,5 @@
 import { IsOptional, IsString, IsEnum, IsInt, Min, Max } from 'class-validator';
-import { Type } from 'class-transformer';
+import { Type, Transform } from 'class-transformer';
 import { ProjectStatus } from '@prisma/client';
 
 export class ProjectFilterDto {
@@ -20,6 +20,9 @@ export class ProjectFilterDto {
   semester?: string;
 
   @IsOptional()
+  @Transform(({ value }: { value: unknown }) =>
+    value === 'All' ? undefined : (value as ProjectStatus),
+  )
   @IsEnum(ProjectStatus)
   status?: ProjectStatus;
 

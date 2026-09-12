@@ -2,7 +2,8 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { AddProfileSkillDto } from './dto/add-profile-skill.dto';
-import { ExperienceLevel } from '@prisma/client';
+import { ProfileFilterDto } from './dto/profile-filter.dto';
+import { ExperienceLevel, Prisma } from '@prisma/client';
 import { GithubService } from '../github/github.service';
 
 @Injectable()
@@ -201,5 +202,94 @@ export class ProfilesService {
 
   async getGithubStats(id: string) {
     return this.githubService.getStatsForProfile(id);
+  }
+
+  /**
+   * Search profiles with multi-criteria filters
+   */
+  async searchProfiles(query: ProfileFilterDto) {
+    const {
+      search,
+      skill,
+      department,
+      semester,
+      experienceLevel,
+      availability,
+      page = 1,
+      limit = 20,
+    } = query;
+
+    const where: Prisma.ProfileWhereInput = {};
+
+    if (search && search.trim()) {
+      const keyword = search.trim();
+      where.OR = [
+        { fullName: { contains: keyword, mode: 'insensitive' } },
+        { bio: { contains: keyword, mode: 'insensitive' } },
+        { department: { contains: keyword, mode: 'insensitive' } },
+      ];
+    }
+
+    if (department && department !== 'All') {
+      where.department = { contains: department, mode: 'insensitive' };
+    }
+
+    if (semester && semester !== 'All') {
+      where.semester = { contains: semester, mode: 'insensitive' };
+    }
+
+    if (experienceLevel) {
+      where.experienceLevel = experienceLevel;
+    }
+
+    if (availability !== undefined) {
+      where.availability = availability;
+    }
+
+    if (skill && skill !== 'All') {
+      where.skills = {
+        some: {
+          skill: {
+            name: { contains: skill, mode: 'insensitive' },
+          },
+        },
+      };
+    }
+
+    const skip = (page - 1) * limit;
+
+    const [total, profiles] = await Promise.all([
+      this.prisma.profile.count({ where }),
+      this.prisma.profile.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          user: {
+            select: {
+              id: true,
+              email: true,
+              role: true,
+            },
+          },
+          skills: {
+            include: {
+              skill: true,
+            },
+          },
+        },
+      }),
+    ]);
+
+    return {
+      profiles,
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
   }
 }
