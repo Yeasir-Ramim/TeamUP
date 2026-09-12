@@ -6,7 +6,10 @@ import {
   ConflictException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { CreateProjectDto, RequiredSkillItemDto } from './dto/create-project.dto';
+import {
+  CreateProjectDto,
+  RequiredSkillItemDto,
+} from './dto/create-project.dto';
 import { UpdateProjectDto } from './dto/update-project.dto';
 import { ProjectFilterDto } from './dto/project-filter.dto';
 import { InviteMemberDto, UpdateMemberDto } from './dto/manage-member.dto';
@@ -79,7 +82,9 @@ export class ProjectsService {
         });
 
         if (!skillExists) {
-          throw new NotFoundException(`Skill with ID '${finalSkillId}' not found`);
+          throw new NotFoundException(
+            `Skill with ID '${finalSkillId}' not found`,
+          );
         }
 
         resolved.push({
@@ -90,7 +95,10 @@ export class ProjectsService {
     }
 
     // Deduplicate by skillId
-    const uniqueMap = new Map<string, { skillId: string; minimumExperience: any }>();
+    const uniqueMap = new Map<
+      string,
+      { skillId: string; minimumExperience: any }
+    >();
     for (const item of resolved) {
       uniqueMap.set(item.skillId, item);
     }
@@ -378,7 +386,11 @@ export class ProjectsService {
   /**
    * Update project details or status (Leader only)
    */
-  async updateProject(projectId: string, userId: string, dto: UpdateProjectDto) {
+  async updateProject(
+    projectId: string,
+    userId: string,
+    dto: UpdateProjectDto,
+  ) {
     const project = await this.prisma.project.findUnique({
       where: { id: projectId },
       include: {
@@ -398,16 +410,24 @@ export class ProjectsService {
 
     const isLeader = await this.isProjectLeader(projectId, userId);
     if (!isLeader) {
-      throw new ForbiddenException('Only a project leader can update this project');
+      throw new ForbiddenException(
+        'Only a project leader can update this project',
+      );
     }
 
-    if (dto.maxMembers !== undefined && dto.maxMembers < project._count.members) {
+    if (
+      dto.maxMembers !== undefined &&
+      dto.maxMembers < project._count.members
+    ) {
       throw new BadRequestException(
         `Cannot set maxMembers to ${dto.maxMembers}. The project already has ${project._count.members} accepted members.`,
       );
     }
 
-    let resolvedSkills: Array<{ skillId: string; minimumExperience: any }> | null = null;
+    let resolvedSkills: Array<{
+      skillId: string;
+      minimumExperience: any;
+    }> | null = null;
     if (dto.requiredSkills) {
       resolvedSkills = await this.resolveSkills(dto.requiredSkills);
     }
@@ -495,7 +515,9 @@ export class ProjectsService {
 
     const isLeader = await this.isProjectLeader(projectId, userId);
     if (!isLeader) {
-      throw new ForbiddenException('Only a project leader can delete this project');
+      throw new ForbiddenException(
+        'Only a project leader can delete this project',
+      );
     }
 
     await this.prisma.project.delete({
@@ -527,11 +549,15 @@ export class ProjectsService {
     }
 
     if (project.status !== ProjectStatus.OPEN) {
-      throw new BadRequestException('Project is not currently open for new members');
+      throw new BadRequestException(
+        'Project is not currently open for new members',
+      );
     }
 
     if (project._count.members >= project.maxMembers) {
-      throw new BadRequestException('Project has reached its maximum member capacity');
+      throw new BadRequestException(
+        'Project has reached its maximum member capacity',
+      );
     }
 
     const existingMember = await this.prisma.projectMember.findUnique({
@@ -545,10 +571,14 @@ export class ProjectsService {
 
     if (existingMember) {
       if (existingMember.status === MemberStatus.ACCEPTED) {
-        throw new ConflictException('You are already an accepted member of this project');
+        throw new ConflictException(
+          'You are already an accepted member of this project',
+        );
       }
       if (existingMember.status === MemberStatus.PENDING) {
-        throw new ConflictException('You already have a pending application for this project');
+        throw new ConflictException(
+          'You already have a pending application for this project',
+        );
       }
       // If rejected earlier, allow re-applying
       return this.prisma.projectMember.update({
@@ -583,7 +613,11 @@ export class ProjectsService {
   /**
    * Invite member to project (Leader only)
    */
-  async inviteMember(projectId: string, leaderId: string, dto: InviteMemberDto) {
+  async inviteMember(
+    projectId: string,
+    leaderId: string,
+    dto: InviteMemberDto,
+  ) {
     const project = await this.prisma.project.findUnique({
       where: { id: projectId },
       include: {
@@ -624,7 +658,9 @@ export class ProjectsService {
 
     if (existingMember) {
       if (existingMember.status === MemberStatus.ACCEPTED) {
-        throw new ConflictException('User is already an accepted member of this project');
+        throw new ConflictException(
+          'User is already an accepted member of this project',
+        );
       }
       // If pending or rejected, update to invited state
       return this.prisma.projectMember.update({
@@ -709,7 +745,9 @@ export class ProjectsService {
 
     const isLeader = await this.isProjectLeader(projectId, updaterId);
     if (!isLeader) {
-      throw new ForbiddenException('Only a project leader can manage member status or roles');
+      throw new ForbiddenException(
+        'Only a project leader can manage member status or roles',
+      );
     }
 
     const member = await this.prisma.projectMember.findFirst({
@@ -783,7 +821,9 @@ export class ProjectsService {
     const isSelf = member.userId === requesterId;
 
     if (!isLeader && !isSelf) {
-      throw new ForbiddenException('You do not have permission to remove this member');
+      throw new ForbiddenException(
+        'You do not have permission to remove this member',
+      );
     }
 
     // If a leader is leaving, ensure there is another leader or they cannot abandon without transferring leadership

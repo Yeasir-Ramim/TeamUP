@@ -1,4 +1,11 @@
-import { IsString, IsNotEmpty, IsOptional, IsEnum, IsNumber, Min } from 'class-validator';
+import {
+  IsString,
+  IsNotEmpty,
+  IsOptional,
+  IsEnum,
+  IsNumber,
+  Min,
+} from 'class-validator';
 import { ExperienceLevel } from '@prisma/client';
 
 export class AddProfileSkillDto {
@@ -12,6 +19,8 @@ export class AddProfileSkillDto {
   yearsOfExperience?: number;
 
   @IsOptional()
-  @IsEnum(ExperienceLevel, { message: 'proficiencyLevel must be BEGINNER, INTERMEDIATE, or ADVANCED' })
+  @IsEnum(ExperienceLevel, {
+    message: 'proficiencyLevel must be BEGINNER, INTERMEDIATE, or ADVANCED',
+  })
   proficiencyLevel?: ExperienceLevel;
 }

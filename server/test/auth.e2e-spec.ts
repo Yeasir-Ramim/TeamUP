@@ -15,17 +15,27 @@ describe('AuthController (e2e)', () => {
 
   const mockPrismaService = {
     user: {
-      findUnique: jest.fn(({ where }: { where: { email?: string; id?: string } }) => {
-        if (where.email) {
-          return Promise.resolve(mockUsers.find((u) => u.email === where.email) || null);
-        }
-        if (where.id) {
-          return Promise.resolve(mockUsers.find((u) => u.id === where.id) || null);
-        }
-        return Promise.resolve(null);
-      }),
+      findUnique: jest.fn(
+        ({ where }: { where: { email?: string; id?: string } }) => {
+          if (where.email) {
+            return Promise.resolve(
+              mockUsers.find((u) => u.email === where.email) || null,
+            );
+          }
+          if (where.id) {
+            return Promise.resolve(
+              mockUsers.find((u) => u.id === where.id) || null,
+            );
+          }
+          return Promise.resolve(null);
+        },
+      ),
       create: jest.fn(({ data }: { data: any }) => {
-        const newUser = { id: `user-${mockUsers.length + 1}`, role: 'STUDENT', ...data };
+        const newUser = {
+          id: `user-${mockUsers.length + 1}`,
+          role: 'STUDENT',
+          ...data,
+        };
         mockUsers.push(newUser);
         return Promise.resolve(newUser);
       }),
@@ -36,13 +46,16 @@ describe('AuthController (e2e)', () => {
         mockTokens.push(token);
         return Promise.resolve(token);
       }),
-      findFirst: jest.fn(({ where }: { where: { userId: string; tokenHash: string } }) => {
-        return Promise.resolve(
-          mockTokens.find(
-            (t) => t.userId === where.userId && t.tokenHash === where.tokenHash,
-          ) || null,
-        );
-      }),
+      findFirst: jest.fn(
+        ({ where }: { where: { userId: string; tokenHash: string } }) => {
+          return Promise.resolve(
+            mockTokens.find(
+              (t) =>
+                t.userId === where.userId && t.tokenHash === where.tokenHash,
+            ) || null,
+          );
+        },
+      ),
       delete: jest.fn(({ where }: { where: { id: string } }) => {
         const idx = mockTokens.findIndex((t) => t.id === where.id);
         if (idx !== -1) mockTokens.splice(idx, 1);

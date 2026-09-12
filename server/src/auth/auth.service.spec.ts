@@ -28,7 +28,9 @@ describe('AuthService', () => {
   };
 
   const mockConfigService = {
-    get: jest.fn((key: string, defaultValue?: string) => defaultValue || 'test_secret'),
+    get: jest.fn(
+      (key: string, defaultValue?: string) => defaultValue || 'test_secret',
+    ),
   };
 
   beforeEach(async () => {
@@ -55,7 +57,10 @@ describe('AuthService', () => {
       mockPrismaService.user.findUnique.mockResolvedValue({ id: 'user-1' });
 
       await expect(
-        service.register({ email: 'test@example.com', password: 'password123' }),
+        service.register({
+          email: 'test@example.com',
+          password: 'password123',
+        }),
       ).rejects.toThrow(ConflictException);
     });
 
@@ -69,7 +74,9 @@ describe('AuthService', () => {
       mockJwtService.signAsync
         .mockResolvedValueOnce('access_token')
         .mockResolvedValueOnce('refresh_token');
-      mockPrismaService.refreshToken.create.mockResolvedValue({ id: 'token-1' });
+      mockPrismaService.refreshToken.create.mockResolvedValue({
+        id: 'token-1',
+      });
 
       const result = await service.register({
         email: 'test@example.com',
@@ -88,7 +95,10 @@ describe('AuthService', () => {
       mockPrismaService.user.findUnique.mockResolvedValue(null);
 
       await expect(
-        service.login({ email: 'unknown@example.com', password: 'password123' }),
+        service.login({
+          email: 'unknown@example.com',
+          password: 'password123',
+        }),
       ).rejects.toThrow(UnauthorizedException);
     });
 
@@ -102,7 +112,10 @@ describe('AuthService', () => {
       });
 
       await expect(
-        service.login({ email: 'test@example.com', password: 'wrong_password' }),
+        service.login({
+          email: 'test@example.com',
+          password: 'wrong_password',
+        }),
       ).rejects.toThrow(UnauthorizedException);
     });
 
@@ -117,7 +130,9 @@ describe('AuthService', () => {
       mockJwtService.signAsync
         .mockResolvedValueOnce('access_token')
         .mockResolvedValueOnce('refresh_token');
-      mockPrismaService.refreshToken.create.mockResolvedValue({ id: 'token-1' });
+      mockPrismaService.refreshToken.create.mockResolvedValue({
+        id: 'token-1',
+      });
 
       const result = await service.login({
         email: 'test@example.com',
@@ -157,9 +172,13 @@ describe('AuthService', () => {
         .mockResolvedValueOnce('new_refresh_token');
       mockPrismaService.refreshToken.create.mockResolvedValue({ id: 'rt-2' });
 
-      const result = await service.refreshTokens({ refreshToken: 'valid_refresh_token' });
+      const result = await service.refreshTokens({
+        refreshToken: 'valid_refresh_token',
+      });
 
-      expect(mockPrismaService.refreshToken.delete).toHaveBeenCalledWith({ where: { id: 'rt-1' } });
+      expect(mockPrismaService.refreshToken.delete).toHaveBeenCalledWith({
+        where: { id: 'rt-1' },
+      });
       expect(result.tokens.accessToken).toBe('new_access_token');
       expect(result.tokens.refreshToken).toBe('new_refresh_token');
     });

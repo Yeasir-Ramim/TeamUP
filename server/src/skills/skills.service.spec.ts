@@ -76,9 +76,14 @@ describe('SkillsService', () => {
 
   describe('create', () => {
     it('should throw ConflictException if skill name already exists', async () => {
-      mockPrismaService.skill.findUnique.mockResolvedValue({ id: 's-1', name: 'Docker' });
+      mockPrismaService.skill.findUnique.mockResolvedValue({
+        id: 's-1',
+        name: 'Docker',
+      });
 
-      await expect(service.create({ name: 'Docker' })).rejects.toThrow(ConflictException);
+      await expect(service.create({ name: 'Docker' })).rejects.toThrow(
+        ConflictException,
+      );
     });
 
     it('should create new skill with trimmed name', async () => {
@@ -86,7 +91,10 @@ describe('SkillsService', () => {
       const newSkill = { id: 's-2', name: 'GraphQL', category: 'Backend' };
       mockPrismaService.skill.create.mockResolvedValue(newSkill);
 
-      const result = await service.create({ name: '  GraphQL  ', category: ' Backend ' });
+      const result = await service.create({
+        name: '  GraphQL  ',
+        category: ' Backend ',
+      });
       expect(result).toEqual(newSkill);
       expect(mockPrismaService.skill.create).toHaveBeenCalledWith({
         data: {
