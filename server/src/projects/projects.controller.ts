@@ -13,6 +13,7 @@ import {
 } from '@nestjs/common';
 import { ProjectsService } from './projects.service';
 import { MatchingService } from '../matching/matching.service';
+import { BookmarksService } from '../bookmarks/bookmarks.service';
 import { CreateProjectDto } from './dto/create-project.dto';
 import { UpdateProjectDto } from './dto/update-project.dto';
 import { ProjectFilterDto } from './dto/project-filter.dto';
@@ -20,12 +21,14 @@ import { InviteMemberDto, UpdateMemberDto } from './dto/manage-member.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '../auth/interfaces/jwt-payload.interface';
+import { BookmarkType } from '@prisma/client';
 
 @Controller('projects')
 export class ProjectsController {
   constructor(
     private readonly projectsService: ProjectsService,
     private readonly matchingService: MatchingService,
+    private readonly bookmarksService: BookmarksService,
   ) {}
 
   /**
@@ -58,6 +61,15 @@ export class ProjectsController {
   }
 
   /**
+   * Get user's bookmarked project listings (matches client bookmarkService.ts)
+   */
+  @Get('bookmarks')
+  @UseGuards(JwtAuthGuard)
+  async getBookmarkedProjects(@CurrentUser() user: AuthenticatedUser) {
+    return this.bookmarksService.getBookmarkedProjects(user.userId);
+  }
+
+  /**
    * Get project details by ID
    */
   @Get(':id')
@@ -75,6 +87,39 @@ export class ProjectsController {
     @CurrentUser() user: AuthenticatedUser,
   ) {
     return this.matchingService.getRecommendations(id, user.userId);
+  }
+
+  /**
+   * Bookmark a project (matches client bookmarkService.ts)
+   */
+  @Post(':id/bookmark')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  async bookmarkProject(
+    @Param('id') id: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.bookmarksService.addBookmark(
+      user.userId,
+      BookmarkType.PROJECT,
+      id,
+    );
+  }
+
+  /**
+   * Remove bookmark for a project (matches client bookmarkService.ts)
+   */
+  @Delete(':id/bookmark')
+  @UseGuards(JwtAuthGuard)
+  async removeProjectBookmark(
+    @Param('id') id: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.bookmarksService.removeBookmark(
+      user.userId,
+      BookmarkType.PROJECT,
+      id,
+    );
   }
 
   /**

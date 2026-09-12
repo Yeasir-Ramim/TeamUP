@@ -10,6 +10,7 @@ import { ProjectsModule } from './projects/projects.module';
 import { WorkspaceModule } from './workspace/workspace.module';
 import { GithubModule } from './github/github.module';
 import { MatchingModule } from './matching/matching.module';
+import { BookmarksModule } from './bookmarks/bookmarks.module';
 
 @Module({
   imports: [
@@ -25,6 +26,7 @@ import { MatchingModule } from './matching/matching.module';
     WorkspaceModule,
     GithubModule,
     MatchingModule,
+    BookmarksModule,
   ],
   controllers: [AppController],
   providers: [AppService],
