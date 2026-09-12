@@ -24,15 +24,21 @@ describe('Profiles & Skills (e2e)', () => {
 
   const mockPrismaService = {
     user: {
-      findUnique: jest.fn(({ where }: { where: { email?: string; id?: string } }) => {
-        if (where.email) {
-          return Promise.resolve(mockUsers.find((u) => u.email === where.email) || null);
-        }
-        if (where.id) {
-          return Promise.resolve(mockUsers.find((u) => u.id === where.id) || null);
-        }
-        return Promise.resolve(null);
-      }),
+      findUnique: jest.fn(
+        ({ where }: { where: { email?: string; id?: string } }) => {
+          if (where.email) {
+            return Promise.resolve(
+              mockUsers.find((u) => u.email === where.email) || null,
+            );
+          }
+          if (where.id) {
+            return Promise.resolve(
+              mockUsers.find((u) => u.id === where.id) || null,
+            );
+          }
+          return Promise.resolve(null);
+        },
+      ),
     },
     refreshToken: {
       create: jest.fn(),
@@ -41,23 +47,27 @@ describe('Profiles & Skills (e2e)', () => {
       deleteMany: jest.fn(),
     },
     profile: {
-      findUnique: jest.fn(({ where }: { where: { userId?: string; id?: string } }) => {
-        if (where.userId) {
-          const p = mockProfiles.find((p) => p.userId === where.userId);
-          if (!p) return Promise.resolve(null);
-          const userSkills = mockProfileSkills
-            .filter((ps) => ps.profileId === p.id)
-            .map((ps) => ({
-              ...ps,
-              skill: mockSkills.find((s) => s.id === ps.skillId),
-            }));
-          return Promise.resolve({ ...p, skills: userSkills });
-        }
-        return Promise.resolve(null);
-      }),
+      findUnique: jest.fn(
+        ({ where }: { where: { userId?: string; id?: string } }) => {
+          if (where.userId) {
+            const p = mockProfiles.find((p) => p.userId === where.userId);
+            if (!p) return Promise.resolve(null);
+            const userSkills = mockProfileSkills
+              .filter((ps) => ps.profileId === p.id)
+              .map((ps) => ({
+                ...ps,
+                skill: mockSkills.find((s) => s.id === ps.skillId),
+              }));
+            return Promise.resolve({ ...p, skills: userSkills });
+          }
+          return Promise.resolve(null);
+        },
+      ),
       findFirst: jest.fn(({ where }: any) => {
         const target = where.OR?.[0]?.id || where.id;
-        const p = mockProfiles.find((p) => p.id === target || p.userId === target);
+        const p = mockProfiles.find(
+          (p) => p.id === target || p.userId === target,
+        );
         if (!p) return Promise.resolve(null);
         const user = mockUsers.find((u) => u.id === p.userId);
         const userSkills = mockProfileSkills
@@ -95,7 +105,8 @@ describe('Profiles & Skills (e2e)', () => {
         let list = [...mockSkills];
         if (where?.category?.equals) {
           list = list.filter(
-            (s) => s.category?.toLowerCase() === where.category.equals.toLowerCase(),
+            (s) =>
+              s.category?.toLowerCase() === where.category.equals.toLowerCase(),
           );
         }
         if (where?.name?.contains) {
@@ -107,10 +118,14 @@ describe('Profiles & Skills (e2e)', () => {
       }),
       findUnique: jest.fn(({ where }: any) => {
         if (where.id) {
-          return Promise.resolve(mockSkills.find((s) => s.id === where.id) || null);
+          return Promise.resolve(
+            mockSkills.find((s) => s.id === where.id) || null,
+          );
         }
         if (where.name) {
-          return Promise.resolve(mockSkills.find((s) => s.name === where.name) || null);
+          return Promise.resolve(
+            mockSkills.find((s) => s.name === where.name) || null,
+          );
         }
         return Promise.resolve(null);
       }),
@@ -125,14 +140,18 @@ describe('Profiles & Skills (e2e)', () => {
         const target = where.profileId_skillId;
         return Promise.resolve(
           mockProfileSkills.find(
-            (ps) => ps.profileId === target.profileId && ps.skillId === target.skillId,
+            (ps) =>
+              ps.profileId === target.profileId &&
+              ps.skillId === target.skillId,
           ) || null,
         );
       }),
       upsert: jest.fn(({ where, create, update }: any) => {
         const target = where.profileId_skillId;
         let ps = mockProfileSkills.find(
-          (item) => item.profileId === target.profileId && item.skillId === target.skillId,
+          (item) =>
+            item.profileId === target.profileId &&
+            item.skillId === target.skillId,
         );
         if (ps) {
           Object.assign(ps, update);
@@ -146,7 +165,8 @@ describe('Profiles & Skills (e2e)', () => {
       delete: jest.fn(({ where }: any) => {
         const target = where.profileId_skillId;
         const idx = mockProfileSkills.findIndex(
-          (ps) => ps.profileId === target.profileId && ps.skillId === target.skillId,
+          (ps) =>
+            ps.profileId === target.profileId && ps.skillId === target.skillId,
         );
         if (idx !== -1) mockProfileSkills.splice(idx, 1);
         return Promise.resolve({});
@@ -189,7 +209,9 @@ describe('Profiles & Skills (e2e)', () => {
 
   describe('Skills Endpoints', () => {
     it('GET /api/v1/skills should return empty list initially', async () => {
-      const res = await request(app.getHttpServer()).get('/api/v1/skills').expect(200);
+      const res = await request(app.getHttpServer())
+        .get('/api/v1/skills')
+        .expect(200);
 
       expect(res.body.success).toBe(true);
       expect(Array.isArray(res.body.data)).toBe(true);

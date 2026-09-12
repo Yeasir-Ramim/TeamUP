@@ -42,7 +42,9 @@ async function bootstrap() {
   app.useGlobalFilters(new HttpExceptionFilter());
 
   await app.listen(port);
-  logger.log(`🚀 TeamUp Backend API running on: http://localhost:${port}/api/v1`);
+  logger.log(
+    `🚀 TeamUp Backend API running on: http://localhost:${port}/api/v1`,
+  );
 }
 
 bootstrap();

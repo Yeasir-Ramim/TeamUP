@@ -170,10 +170,14 @@ export class WorkspaceService {
     };
 
     for (const group of taskCountsByStatus) {
-      if (group.status === TaskStatus.TODO) taskBreakdown.todo = group._count.status;
-      if (group.status === TaskStatus.IN_PROGRESS) taskBreakdown.inProgress = group._count.status;
-      if (group.status === TaskStatus.TESTING) taskBreakdown.testing = group._count.status;
-      if (group.status === TaskStatus.DONE) taskBreakdown.done = group._count.status;
+      if (group.status === TaskStatus.TODO)
+        taskBreakdown.todo = group._count.status;
+      if (group.status === TaskStatus.IN_PROGRESS)
+        taskBreakdown.inProgress = group._count.status;
+      if (group.status === TaskStatus.TESTING)
+        taskBreakdown.testing = group._count.status;
+      if (group.status === TaskStatus.DONE)
+        taskBreakdown.done = group._count.status;
       taskBreakdown.total += group._count.status;
     }
 
@@ -194,7 +198,9 @@ export class WorkspaceService {
         creator: project.creator,
         requiredSkills: project.requiredSkills,
       },
-      userRole: userMembership?.role ?? (project.creatorId === userId ? 'LEADER' : 'MEMBER'),
+      userRole:
+        userMembership?.role ??
+        (project.creatorId === userId ? 'LEADER' : 'MEMBER'),
       members: project.members,
       metrics: {
         tasks: {

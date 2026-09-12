@@ -8,6 +8,8 @@ import { ProfilesModule } from './profiles/profiles.module';
 import { SkillsModule } from './skills/skills.module';
 import { ProjectsModule } from './projects/projects.module';
 import { WorkspaceModule } from './workspace/workspace.module';
+import { GithubModule } from './github/github.module';
+import { MatchingModule } from './matching/matching.module';
 
 @Module({
   imports: [
@@ -21,6 +23,8 @@ import { WorkspaceModule } from './workspace/workspace.module';
     SkillsModule,
     ProjectsModule,
     WorkspaceModule,
+    GithubModule,
+    MatchingModule,
   ],
   controllers: [AppController],
   providers: [AppService],

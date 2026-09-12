@@ -55,7 +55,9 @@ describe('AuthController', () => {
 
   it('should refresh tokens', async () => {
     const dto = { refreshToken: 'valid_refresh_token' };
-    const expected = { tokens: { accessToken: 'new_a', refreshToken: 'new_r' } };
+    const expected = {
+      tokens: { accessToken: 'new_a', refreshToken: 'new_r' },
+    };
     mockAuthService.refreshTokens.mockResolvedValue(expected);
 
     const result = await controller.refresh(dto);
@@ -64,8 +66,14 @@ describe('AuthController', () => {
   });
 
   it('should log out a user', async () => {
-    mockAuthService.logout.mockResolvedValue({ message: 'Logged out successfully' });
-    const user = { userId: '1', email: 'test@example.com', role: 'STUDENT' as any };
+    mockAuthService.logout.mockResolvedValue({
+      message: 'Logged out successfully',
+    });
+    const user = {
+      userId: '1',
+      email: 'test@example.com',
+      role: 'STUDENT' as any,
+    };
 
     const result = await controller.logout(user, { refreshToken: 'rt' });
     expect(result).toEqual({ message: 'Logged out successfully' });
@@ -73,7 +81,11 @@ describe('AuthController', () => {
   });
 
   it('should return the current user for getMe', async () => {
-    const user = { userId: '1', email: 'test@example.com', role: 'STUDENT' as any };
+    const user = {
+      userId: '1',
+      email: 'test@example.com',
+      role: 'STUDENT' as any,
+    };
     const result = await controller.getMe(user);
     expect(result).toEqual(user);
   });

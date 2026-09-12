@@ -12,6 +12,7 @@ import {
   HttpStatus,
 } from '@nestjs/common';
 import { ProjectsService } from './projects.service';
+import { MatchingService } from '../matching/matching.service';
 import { CreateProjectDto } from './dto/create-project.dto';
 import { UpdateProjectDto } from './dto/update-project.dto';
 import { ProjectFilterDto } from './dto/project-filter.dto';
@@ -22,7 +23,10 @@ import type { AuthenticatedUser } from '../auth/interfaces/jwt-payload.interface
 
 @Controller('projects')
 export class ProjectsController {
-  constructor(private readonly projectsService: ProjectsService) {}
+  constructor(
+    private readonly projectsService: ProjectsService,
+    private readonly matchingService: MatchingService,
+  ) {}
 
   /**
    * Create a new project listing
@@ -59,6 +63,18 @@ export class ProjectsController {
   @Get(':id')
   async getProjectById(@Param('id') id: string) {
     return this.projectsService.findById(id);
+  }
+
+  /**
+   * Get ranked teammate recommendations for project (Design Doc §4.1)
+   */
+  @Get(':id/recommendations')
+  @UseGuards(JwtAuthGuard)
+  async getRecommendations(
+    @Param('id') id: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.matchingService.getRecommendations(id, user.userId);
   }
 
   /**

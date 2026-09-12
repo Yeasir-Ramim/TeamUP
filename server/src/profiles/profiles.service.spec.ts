@@ -1,11 +1,17 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ProfilesService } from './profiles.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { GithubService } from '../github/github.service';
 import { NotFoundException } from '@nestjs/common';
 import { ExperienceLevel } from '@prisma/client';
 
 describe('ProfilesService', () => {
   let service: ProfilesService;
+  let githubService: GithubService;
+
+  const mockGithubService = {
+    getStatsForProfile: jest.fn(),
+  };
 
   const mockPrismaService = {
     profile: {
@@ -31,10 +37,12 @@ describe('ProfilesService', () => {
       providers: [
         ProfilesService,
         { provide: PrismaService, useValue: mockPrismaService },
+        { provide: GithubService, useValue: mockGithubService },
       ],
     }).compile();
 
     service = module.get<ProfilesService>(ProfilesService);
+    githubService = module.get<GithubService>(GithubService);
   });
 
   it('should be defined', () => {
@@ -62,7 +70,9 @@ describe('ProfilesService', () => {
     it('should throw NotFoundException if profile does not exist', async () => {
       mockPrismaService.profile.findUnique.mockResolvedValue(null);
 
-      await expect(service.getMyProfile('user-unknown')).rejects.toThrow(NotFoundException);
+      await expect(service.getMyProfile('user-unknown')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -78,7 +88,9 @@ describe('ProfilesService', () => {
     it('should throw NotFoundException if not found', async () => {
       mockPrismaService.profile.findFirst.mockResolvedValue(null);
 
-      await expect(service.getProfileById('none')).rejects.toThrow(NotFoundException);
+      await expect(service.getProfileById('none')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -119,13 +131,21 @@ describe('ProfilesService', () => {
       mockPrismaService.skill.findUnique.mockResolvedValue(null);
 
       await expect(
-        service.addSkillToProfile('user-1', 'test@uni.edu', { skillId: 'invalid-skill' }),
+        service.addSkillToProfile('user-1', 'test@uni.edu', {
+          skillId: 'invalid-skill',
+        }),
       ).rejects.toThrow(NotFoundException);
     });
 
     it('should associate skill with profile and return join record', async () => {
-      mockPrismaService.skill.findUnique.mockResolvedValue({ id: 's-1', name: 'React' });
-      mockPrismaService.profile.findUnique.mockResolvedValue({ id: 'prof-1', userId: 'user-1' });
+      mockPrismaService.skill.findUnique.mockResolvedValue({
+        id: 's-1',
+        name: 'React',
+      });
+      mockPrismaService.profile.findUnique.mockResolvedValue({
+        id: 'prof-1',
+        userId: 'user-1',
+      });
       const mockProfileSkill = {
         id: 'ps-1',
         profileId: 'prof-1',
@@ -151,24 +171,52 @@ describe('ProfilesService', () => {
     it('should throw NotFoundException if profile does not exist', async () => {
       mockPrismaService.profile.findUnique.mockResolvedValue(null);
 
-      await expect(service.removeSkillFromProfile('user-1', 's-1')).rejects.toThrow(NotFoundException);
+      await expect(
+        service.removeSkillFromProfile('user-1', 's-1'),
+      ).rejects.toThrow(NotFoundException);
     });
 
     it('should throw NotFoundException if association does not exist', async () => {
       mockPrismaService.profile.findUnique.mockResolvedValue({ id: 'prof-1' });
       mockPrismaService.profileSkill.findUnique.mockResolvedValue(null);
 
-      await expect(service.removeSkillFromProfile('user-1', 's-1')).rejects.toThrow(NotFoundException);
+      await expect(
+        service.removeSkillFromProfile('user-1', 's-1'),
+      ).rejects.toThrow(NotFoundException);
     });
 
     it('should delete association and return confirmation message', async () => {
       mockPrismaService.profile.findUnique.mockResolvedValue({ id: 'prof-1' });
-      mockPrismaService.profileSkill.findUnique.mockResolvedValue({ id: 'ps-1' });
+      mockPrismaService.profileSkill.findUnique.mockResolvedValue({
+        id: 'ps-1',
+      });
       mockPrismaService.profileSkill.delete.mockResolvedValue({ id: 'ps-1' });
 
       const result = await service.removeSkillFromProfile('user-1', 's-1');
-      expect(result).toEqual({ message: 'Skill removed successfully from profile' });
+      expect(result).toEqual({
+        message: 'Skill removed successfully from profile',
+      });
       expect(mockPrismaService.profileSkill.delete).toHaveBeenCalled();
+    });
+  });
+
+  describe('getGithubStats', () => {
+    it('should delegate to GithubService.getStatsForProfile', async () => {
+      const mockStats = {
+        username: 'octocat',
+        connected: true,
+        publicRepos: 8,
+        followers: 12,
+        contributionsThisYear: 120,
+        topLanguages: ['TypeScript'],
+      };
+      mockGithubService.getStatsForProfile.mockResolvedValue(mockStats);
+
+      const result = await service.getGithubStats('prof-1');
+      expect(result).toEqual(mockStats);
+      expect(mockGithubService.getStatsForProfile).toHaveBeenCalledWith(
+        'prof-1',
+      );
     });
   });
 });

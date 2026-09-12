@@ -29,7 +29,9 @@ export class ProjectMemberGuard implements CanActivate {
       request.query?.projectId;
 
     if (!projectId) {
-      throw new BadRequestException('Project ID is required for workspace access');
+      throw new BadRequestException(
+        'Project ID is required for workspace access',
+      );
     }
 
     const project = await this.prisma.project.findUnique({

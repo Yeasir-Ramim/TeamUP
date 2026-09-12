@@ -3,10 +3,14 @@ import { PrismaService } from '../prisma/prisma.service';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { AddProfileSkillDto } from './dto/add-profile-skill.dto';
 import { ExperienceLevel } from '@prisma/client';
+import { GithubService } from '../github/github.service';
 
 @Injectable()
 export class ProfilesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly githubService: GithubService,
+  ) {}
 
   async getMyProfile(userId: string) {
     const profile = await this.prisma.profile.findUnique({
@@ -21,7 +25,9 @@ export class ProfilesService {
     });
 
     if (!profile) {
-      throw new NotFoundException('Profile not found. Please create your profile.');
+      throw new NotFoundException(
+        'Profile not found. Please create your profile.',
+      );
     }
 
     return profile;
@@ -56,7 +62,9 @@ export class ProfilesService {
   }
 
   async upsertProfile(userId: string, email: string, dto: UpdateProfileDto) {
-    const existing = await this.prisma.profile.findUnique({ where: { userId } });
+    const existing = await this.prisma.profile.findUnique({
+      where: { userId },
+    });
     const fullName = dto.fullName ?? existing?.fullName ?? email.split('@')[0];
 
     return this.prisma.profile.upsert({
@@ -79,10 +87,18 @@ export class ProfilesService {
         ...(dto.avatarUrl !== undefined && { avatarUrl: dto.avatarUrl }),
         ...(dto.department !== undefined && { department: dto.department }),
         ...(dto.semester !== undefined && { semester: dto.semester }),
-        ...(dto.availability !== undefined && { availability: dto.availability }),
-        ...(dto.experienceLevel !== undefined && { experienceLevel: dto.experienceLevel }),
-        ...(dto.githubUsername !== undefined && { githubUsername: dto.githubUsername }),
-        ...(dto.portfolioUrl !== undefined && { portfolioUrl: dto.portfolioUrl }),
+        ...(dto.availability !== undefined && {
+          availability: dto.availability,
+        }),
+        ...(dto.experienceLevel !== undefined && {
+          experienceLevel: dto.experienceLevel,
+        }),
+        ...(dto.githubUsername !== undefined && {
+          githubUsername: dto.githubUsername,
+        }),
+        ...(dto.portfolioUrl !== undefined && {
+          portfolioUrl: dto.portfolioUrl,
+        }),
       },
       include: {
         skills: {
@@ -94,7 +110,11 @@ export class ProfilesService {
     });
   }
 
-  async addSkillToProfile(userId: string, email: string, dto: AddProfileSkillDto) {
+  async addSkillToProfile(
+    userId: string,
+    email: string,
+    dto: AddProfileSkillDto,
+  ) {
     const skill = await this.prisma.skill.findUnique({
       where: { id: dto.skillId },
     });
@@ -130,8 +150,12 @@ export class ProfilesService {
         proficiencyLevel: dto.proficiencyLevel ?? ExperienceLevel.BEGINNER,
       },
       update: {
-        ...(dto.yearsOfExperience !== undefined && { yearsOfExperience: dto.yearsOfExperience }),
-        ...(dto.proficiencyLevel !== undefined && { proficiencyLevel: dto.proficiencyLevel }),
+        ...(dto.yearsOfExperience !== undefined && {
+          yearsOfExperience: dto.yearsOfExperience,
+        }),
+        ...(dto.proficiencyLevel !== undefined && {
+          proficiencyLevel: dto.proficiencyLevel,
+        }),
       },
       include: {
         skill: true,
@@ -158,7 +182,9 @@ export class ProfilesService {
     });
 
     if (!association) {
-      throw new NotFoundException('Skill association not found on this profile');
+      throw new NotFoundException(
+        'Skill association not found on this profile',
+      );
     }
 
     await this.prisma.profileSkill.delete({
@@ -174,31 +200,6 @@ export class ProfilesService {
   }
 
   async getGithubStats(id: string) {
-    const profile = await this.prisma.profile.findFirst({
-      where: {
-        OR: [{ id }, { userId: id }],
-      },
-    });
-
-    const username = profile?.githubUsername || 'octocat';
-
-    try {
-      return {
-        username,
-        publicRepos: 18,
-        followers: 42,
-        contributionsThisYear: 285,
-        topLanguages: ['TypeScript', 'Python', 'Go'],
-        avatarUrl: `https://github.com/${username}.png`,
-        connected: !!profile?.githubUsername,
-      };
-    } catch {
-      return {
-        username,
-        connected: false,
-        error: 'GitHub API unavailable',
-      };
-    }
+    return this.githubService.getStatsForProfile(id);
   }
 }
-

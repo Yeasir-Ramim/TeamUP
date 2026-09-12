@@ -1,4 +1,10 @@
-import { IsString, IsOptional, IsBoolean, IsEnum, MinLength } from 'class-validator';
+import {
+  IsString,
+  IsOptional,
+  IsBoolean,
+  IsEnum,
+  MinLength,
+} from 'class-validator';
 import { ExperienceLevel } from '@prisma/client';
 
 export class UpdateProfileDto {
@@ -28,7 +34,9 @@ export class UpdateProfileDto {
   availability?: boolean;
 
   @IsOptional()
-  @IsEnum(ExperienceLevel, { message: 'experienceLevel must be BEGINNER, INTERMEDIATE, or ADVANCED' })
+  @IsEnum(ExperienceLevel, {
+    message: 'experienceLevel must be BEGINNER, INTERMEDIATE, or ADVANCED',
+  })
   experienceLevel?: ExperienceLevel;
 
   @IsOptional()
