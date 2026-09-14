@@ -16,6 +16,7 @@ import { Badge } from '../../components/Badge';
 import { Chip } from '../../components/Chip';
 import { Button } from '../../components/Button';
 import { StateWrapper } from '../../components/StateWrapper';
+import { CalendarView } from '../../components/CalendarView';
 import {
   schedulerService,
   Meeting,
@@ -33,6 +34,7 @@ export const SchedulerScreen: React.FC<SchedulerScreenProps> = ({
 }) => {
   const { colors, typography, spacing } = useTheme();
 
+  const [viewMode, setViewMode] = useState<'CALENDAR' | 'MEETINGS'>('MEETINGS');
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -214,41 +216,60 @@ export const SchedulerScreen: React.FC<SchedulerScreenProps> = ({
     }
   };
 
-  if (isLoading) {
+  if (isLoading && viewMode === 'MEETINGS') {
     return <StateWrapper state="loading" />;
   }
 
-  if (error) {
+  if (error && viewMode === 'MEETINGS') {
     return <StateWrapper state="error" errorMessage={error} onRetry={loadMeetings} />;
   }
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* Header */}
-      <View style={styles.header}>
-        <View>
-          <Text
-            style={[
-              styles.headerTitle,
-              { color: colors.onSurface, fontSize: typography.headlineMedium.fontSize },
-            ]}
-          >
-            Meeting Scheduler
-          </Text>
-          <Text style={{ color: colors.onSurfaceVariant, fontSize: 13, marginTop: 2 }}>
-            Propose slots, collect votes, and confirm team meetings.
-          </Text>
-        </View>
-
-        <Button
-          title="+ Propose"
-          onPress={() => setIsModalVisible(true)}
-          style={{ paddingHorizontal: spacing.sm }}
+      {/* Top Mode Switcher */}
+      <View style={[styles.modeSwitcherRow, { marginBottom: spacing.sm }]}>
+        <Chip
+          label="📅 Calendar & Deadlines"
+          selected={viewMode === 'CALENDAR'}
+          onPress={() => setViewMode('CALENDAR')}
+        />
+        <View style={{ width: spacing.xs }} />
+        <Chip
+          label="🤝 Meeting Proposals"
+          selected={viewMode === 'MEETINGS'}
+          onPress={() => setViewMode('MEETINGS')}
         />
       </View>
 
-      {/* Filter Chips */}
-      <View style={[styles.filterRow, { marginVertical: spacing.md }]}>
+      {viewMode === 'CALENDAR' ? (
+        <CalendarView projectId={projectId} />
+      ) : (
+        <>
+          {/* Header */}
+          <View style={styles.header}>
+            <View>
+              <Text
+                style={[
+                  styles.headerTitle,
+                  { color: colors.onSurface, fontSize: typography.headlineMedium.fontSize },
+                ]}
+              >
+                Meeting Scheduler
+              </Text>
+              <Text style={{ color: colors.onSurfaceVariant, fontSize: 13, marginTop: 2 }}>
+                Propose slots, collect votes, and confirm team meetings.
+              </Text>
+            </View>
+
+            <Button
+              title="+ Propose"
+              onPress={() => setIsModalVisible(true)}
+              style={{ paddingHorizontal: spacing.sm }}
+            />
+          </View>
+
+          {/* Filter Chips */}
+          <View style={[styles.filterRow, { marginVertical: spacing.md }]}>
         <Chip
           label={`All (${meetings.length})`}
           selected={filter === 'ALL'}
@@ -539,6 +560,8 @@ export const SchedulerScreen: React.FC<SchedulerScreenProps> = ({
           </View>
         </View>
       </Modal>
+        </>
+      )}
     </View>
   );
 };
@@ -547,6 +570,10 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 16,
+  },
+  modeSwitcherRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   header: {
     flexDirection: 'row',
