@@ -406,7 +406,7 @@ export const SchedulerScreen: React.FC<SchedulerScreenProps> = ({
                           >
                             <Text
                               style={{
-                                color: hasVoted ? '#FFFFFF' : colors.primary,
+                                color: hasVoted ? colors.onPrimary : colors.primary,
                                 fontWeight: '600',
                                 fontSize: 13,
                               }}
@@ -423,7 +423,7 @@ export const SchedulerScreen: React.FC<SchedulerScreenProps> = ({
                               { backgroundColor: colors.secondary },
                             ]}
                           >
-                            <Text style={{ color: '#FFFFFF', fontWeight: '600', fontSize: 12 }}>
+                            <Text style={{ color: colors.onSecondary, fontWeight: '600', fontSize: 12 }}>
                               Confirm
                             </Text>
                           </TouchableOpacity>

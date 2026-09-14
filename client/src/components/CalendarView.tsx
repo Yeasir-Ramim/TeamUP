@@ -104,7 +104,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
       marks[dateKey].dots.push({
         key: evt.id,
         color: dotColor,
-        selectedDotColor: '#FFFFFF',
+        selectedDotColor: colors.onPrimary,
       });
     });
 
@@ -206,7 +206,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
             calendarBackground: colors.surface,
             textSectionTitleColor: colors.onSurfaceVariant,
             selectedDayBackgroundColor: colors.primary,
-            selectedDayTextColor: '#FFFFFF',
+            selectedDayTextColor: colors.onPrimary,
             todayTextColor: colors.primary,
             dayTextColor: colors.onSurface,
             textDisabledColor: colors.outlineVariant,
@@ -331,7 +331,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                   >
                     <Text
                       style={{
-                        color: eventType === type ? '#FFFFFF' : colors.onSurface,
+                        color: eventType === type ? colors.onPrimary : colors.onSurface,
                         fontWeight: '600',
                         fontSize: 12,
                       }}
