@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { tokenStorage } from '../services/tokenStorage';
 import { api, ApiError } from '../api/client';
+import { pushNotificationService } from '../services/pushNotificationService';
 
 export interface ProfileSkill {
   id: string;
@@ -124,6 +125,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             setUser({ email, fullName: email.split('@')[0] });
           }
         }
+
+        // Register push notification token
+        await pushNotificationService.registerDevicePushToken();
       }
     } finally {
       setIsLoading(false);
@@ -146,6 +150,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
         setToken(res.accessToken);
         setUser(res.user || { email, fullName });
+
+        // Register push notification token
+        await pushNotificationService.registerDevicePushToken();
       }
     } finally {
       setIsLoading(false);
@@ -155,6 +162,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const logout = async (): Promise<void> => {
     setIsLoading(true);
     try {
+      await pushNotificationService.deregisterDevicePushToken();
       await tokenStorage.clearAll();
       setToken(null);
       setUser(null);

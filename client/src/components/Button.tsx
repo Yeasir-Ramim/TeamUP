@@ -22,6 +22,7 @@ export interface ButtonProps {
   style?: StyleProp<ViewStyle>;
   textStyle?: StyleProp<TextStyle>;
   enableHaptics?: boolean;
+  testID?: string;
 }
 
 export const Button: React.FC<ButtonProps> = ({
@@ -33,6 +34,7 @@ export const Button: React.FC<ButtonProps> = ({
   style,
   textStyle,
   enableHaptics = true,
+  testID,
 }) => {
   const { colors, typography, borderRadius, spacing } = useTheme();
   const [scaleAnim] = useState(() => new Animated.Value(1));
@@ -104,6 +106,7 @@ export const Button: React.FC<ButtonProps> = ({
   return (
     <Animated.View style={[{ transform: [{ scale: scaleAnim }] }, style]}>
       <Pressable
+        testID={testID}
         onPressIn={handlePressIn}
         onPressOut={handlePressOut}
         onPress={handlePress}
