@@ -94,6 +94,7 @@ model User {
   authoredIdeas       Idea[]           @relation("AuthoredIdeas")
   bookmarks           Bookmark[]
   notifications       Notification[]
+  pushTokens          PushToken[]
   evaluationsGiven    PeerEvaluation[] @relation("EvaluationsGiven")
   evaluationsReceived PeerEvaluation[] @relation("EvaluationsReceived")
 }
@@ -387,6 +388,17 @@ model Notification {
 
   @@index([userId, isRead])
   @@index([userId, createdAt])
+}
+
+model PushToken {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token     String   @unique
+  device    String?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
 }
 
 model PeerEvaluation {
