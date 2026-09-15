@@ -12,6 +12,7 @@ import { GithubModule } from './github/github.module';
 import { MatchingModule } from './matching/matching.module';
 import { BookmarksModule } from './bookmarks/bookmarks.module';
 import { NotificationsModule } from './notifications/notifications.module';
+import { MeetingsModule } from './meetings/meetings.module';
 
 @Module({
   imports: [
@@ -29,6 +30,7 @@ import { NotificationsModule } from './notifications/notifications.module';
     MatchingModule,
     BookmarksModule,
     NotificationsModule,
+    MeetingsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
