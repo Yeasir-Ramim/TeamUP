@@ -13,6 +13,7 @@ import { MatchingModule } from './matching/matching.module';
 import { BookmarksModule } from './bookmarks/bookmarks.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { MeetingsModule } from './meetings/meetings.module';
+import { CalendarModule } from './calendar/calendar.module';
 
 @Module({
   imports: [
@@ -31,6 +32,7 @@ import { MeetingsModule } from './meetings/meetings.module';
     BookmarksModule,
     NotificationsModule,
     MeetingsModule,
+    CalendarModule,
   ],
   controllers: [AppController],
   providers: [AppService],
