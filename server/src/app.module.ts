@@ -14,6 +14,7 @@ import { BookmarksModule } from './bookmarks/bookmarks.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { MeetingsModule } from './meetings/meetings.module';
 import { CalendarModule } from './calendar/calendar.module';
+import { IdeasModule } from './ideas/ideas.module';
 
 @Module({
   imports: [
@@ -33,6 +34,7 @@ import { CalendarModule } from './calendar/calendar.module';
     NotificationsModule,
     MeetingsModule,
     CalendarModule,
+    IdeasModule,
   ],
   controllers: [AppController],
   providers: [AppService],
