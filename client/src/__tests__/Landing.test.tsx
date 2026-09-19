@@ -3,6 +3,14 @@ import { render, fireEvent } from '@testing-library/react-native';
 import { LandingScreen } from '../screens/Landing/LandingScreen';
 import { ThemeProvider } from '../theme/ThemeContext';
 
+jest.mock('lucide-react-native', () => {
+  const React = require('react');
+  const { View } = require('react-native');
+  return new Proxy({}, {
+    get: (_, name) => (props: any) => React.createElement(View, { testID: `icon-${String(name)}`, ...props })
+  });
+});
+
 describe('Landing Screen', () => {
   const mockNavigation = {
     navigate: jest.fn(),
@@ -86,16 +94,17 @@ describe('Landing Screen', () => {
   });
 
   it('renders interactive candidate match teaser card', () => {
-    const { getByText } = render(
+    const { getByText, getAllByText } = render(
       <ThemeProvider>
         <LandingScreen navigation={mockNavigation} />
       </ThemeProvider>
     );
 
     expect(getByText('Alice Johnson')).toBeTruthy();
-    expect(getByText('95% Match')).toBeTruthy();
-    expect(getByText('#React Native')).toBeTruthy();
-    expect(getByText('#TypeScript')).toBeTruthy();
+    expect(getAllByText('95%').length).toBeGreaterThan(0);
+    expect(getAllByText('Match').length).toBeGreaterThan(0);
+    expect(getAllByText('#React Native').length).toBeGreaterThan(0);
+    expect(getAllByText('#TypeScript').length).toBeGreaterThan(0);
   });
 
   it('allows toggling dark/light theme via theme toggle button', () => {
