@@ -146,13 +146,13 @@ export const StateWrapper: React.FC<StateWrapperProps> = ({
         >
           {emptySubtitle}
         </Text>
-        {emptyActionLabel && onEmptyAction && (
+        {emptyActionLabel && onEmptyAction ? (
           <Button
             title={emptyActionLabel}
             onPress={onEmptyAction}
             style={{ marginTop: spacing.md }}
           />
-        )}
+        ) : null}
       </View>
     );
   }

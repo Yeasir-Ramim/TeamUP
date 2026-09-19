@@ -6,6 +6,7 @@ import {
   ViewStyle,
   StyleProp,
   View,
+  Text,
   Platform,
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
@@ -87,7 +88,13 @@ export const Card: React.FC<CardProps> = ({
         style,
       ]}
     >
-      {children}
+      {React.Children.map(children, (child) => {
+        if (typeof child === 'string') {
+          if (!child.trim()) return null;
+          return <Text>{child}</Text>;
+        }
+        return child;
+      })}
     </View>
   );
 

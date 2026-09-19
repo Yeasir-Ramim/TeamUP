@@ -180,7 +180,7 @@ export const ProfileScreen = () => {
                     {user.email}
                   </Text>
                   <View style={styles.badgeRow}>
-                    {user.experienceLevel && (
+                    {user.experienceLevel ? (
                       <Badge
                         label={user.experienceLevel}
                         variant={
@@ -190,7 +190,7 @@ export const ProfileScreen = () => {
                         }
                         style={{ marginRight: 6 }}
                       />
-                    )}
+                    ) : null}
                     <Badge
                       label={user.availability ? 'Available for Teams' : 'Busy'}
                       variant={user.availability ? 'primary' : 'error'}
@@ -214,16 +214,16 @@ export const ProfileScreen = () => {
                 </Text>
               ) : null}
 
-              {(user.department || user.semester) && (
+              {(user.department || user.semester) ? (
                 <View style={[styles.infoRow, { marginTop: spacing.sm }]}>
-                  {user.department && (
+                  {user.department ? (
                     <Chip label={user.department} variant="secondary" />
-                  )}
-                  {user.semester && (
+                  ) : null}
+                  {user.semester ? (
                     <Chip label={user.semester} variant="secondary" />
-                  )}
+                  ) : null}
                 </View>
-              )}
+              ) : null}
             </Card>
 
             {/* Skills Bento Card */}
@@ -267,7 +267,7 @@ export const ProfileScreen = () => {
             />
 
             {/* Links Bento Card */}
-            {(user.githubUsername || user.portfolioUrl) && (
+            {(user.githubUsername || user.portfolioUrl) ? (
               <Card style={[styles.card, { marginTop: spacing.md }]}>
                 <Text
                   style={[
@@ -277,7 +277,7 @@ export const ProfileScreen = () => {
                 >
                   Links & Profiles
                 </Text>
-                {user.githubUsername && (
+                {user.githubUsername ? (
                   <TouchableOpacity
                     style={styles.linkRow}
                     onPress={() =>
@@ -293,9 +293,9 @@ export const ProfileScreen = () => {
                       github.com/{user.githubUsername}
                     </Text>
                   </TouchableOpacity>
-                )}
+                ) : null}
 
-                {user.portfolioUrl && (
+                {user.portfolioUrl ? (
                   <TouchableOpacity
                     style={styles.linkRow}
                     onPress={() => Linking.openURL(user.portfolioUrl!)}
@@ -309,9 +309,9 @@ export const ProfileScreen = () => {
                       {user.portfolioUrl}
                     </Text>
                   </TouchableOpacity>
-                )}
+                ) : null}
               </Card>
-            )}
+            ) : null}
 
             {/* Action Buttons */}
             <View style={{ marginTop: spacing.md }}>
