@@ -292,6 +292,29 @@ async function main() {
     },
   });
 
+  // 6. Ensure all users have LEADER role on project-1 for testing and candidate invitation
+  const allUsers = await prisma.user.findMany();
+  for (const u of allUsers) {
+    await prisma.projectMember.upsert({
+      where: {
+        projectId_userId: {
+          projectId: 'project-1',
+          userId: u.id,
+        },
+      },
+      update: {
+        role: ProjectRole.LEADER,
+        status: MemberStatus.ACCEPTED,
+      },
+      create: {
+        projectId: 'project-1',
+        userId: u.id,
+        role: ProjectRole.LEADER,
+        status: MemberStatus.ACCEPTED,
+      },
+    });
+  }
+
   console.log('Database seeding complete!');
 }
 

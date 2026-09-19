@@ -289,11 +289,11 @@ export const MatchingScreen: React.FC = () => {
             </View>
           </View>
 
-          {/* Current Active Filter Indicator */}
-          {activeTarget && (
-            <View style={[styles.activeFilterRow, { marginTop: spacing.xs }]}>
+          {/* Current Active Filter Indicator & Target Project */}
+          <View style={[styles.activeFilterRow, { marginTop: spacing.sm, flexWrap: 'wrap' }]}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginRight: 12, marginBottom: 4 }}>
               <Text style={{ color: colors.onSurfaceVariant, fontSize: 12 }}>
-                Current query:
+                Searching by:
               </Text>
               <Badge
                 label={activeTarget}
@@ -301,7 +301,17 @@ export const MatchingScreen: React.FC = () => {
                 style={{ marginLeft: 6 }}
               />
             </View>
-          )}
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+              <Text style={{ color: colors.onSurfaceVariant, fontSize: 12 }}>
+                Inviting to:
+              </Text>
+              <Badge
+                label="AI Study Buddy (project-1)"
+                variant="primary"
+                style={{ marginLeft: 6 }}
+              />
+            </View>
+          </View>
         </Card>
 
         {/* Content Wrapper handling Loading / Populated / Empty / Error */}
