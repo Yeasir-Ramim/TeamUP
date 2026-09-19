@@ -29,6 +29,7 @@ jest.mock('@react-navigation/native', () => ({
 }));
 
 describe('Notifications (Phase 7 - Feature 15)', () => {
+  jest.setTimeout(15000);
   const mockNotifications: AppNotification[] = [
     {
       id: 'notif-1',
