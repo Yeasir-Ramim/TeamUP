@@ -378,7 +378,7 @@ export const MatchingScreen: React.FC = () => {
                   )}
 
                   {/* GitHub Profile Stat Summary */}
-                  {candidate.githubUsername && (
+                  {candidate.githubUsername ? (
                     <View
                       style={[
                         styles.githubSummaryRow,
@@ -389,7 +389,7 @@ export const MatchingScreen: React.FC = () => {
                       ]}
                     >
                       <Text style={{ color: colors.onSurfaceVariant, fontSize: 13 }}>
-                        🐙 @{candidate.githubUsername}
+                        @{candidate.githubUsername}
                         {candidate.publicRepos !== undefined
                           ? ` • ${candidate.publicRepos} repos`
                           : ''}
@@ -398,7 +398,7 @@ export const MatchingScreen: React.FC = () => {
                           : ''}
                       </Text>
                     </View>
-                  )}
+                  ) : null}
 
                   {/* Invitation Failure Error Banner */}
                   {status === 'error' && inviteErr ? (
@@ -408,7 +408,7 @@ export const MatchingScreen: React.FC = () => {
                         { color: colors.error, marginTop: spacing.xs },
                       ]}
                     >
-                      ⚠️ {inviteErr}
+                      {inviteErr}
                     </Text>
                   ) : null}
 
