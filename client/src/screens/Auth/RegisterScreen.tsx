@@ -232,6 +232,14 @@ export const RegisterScreen = ({ navigation }: any) => {
                 </Text>
               </TouchableOpacity>
             </View>
+
+            <View style={[styles.footerRow, { marginTop: 12 }]}>
+              <TouchableOpacity onPress={() => navigation.navigate('Landing')}>
+                <Text style={{ color: colors.onSurfaceVariant, fontSize: 13 }}>
+                  Back to Home
+                </Text>
+              </TouchableOpacity>
+            </View>
           </Card>
         </View>
       </ScrollView>

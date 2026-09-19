@@ -3,12 +3,14 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../theme/ThemeContext';
+import { LandingScreen } from '../screens/Landing/LandingScreen';
 import { LoginScreen } from '../screens/Auth/LoginScreen';
 import { RegisterScreen } from '../screens/Auth/RegisterScreen';
 import { TabNavigator } from './TabNavigator';
 import { StateWrapper } from '../components/StateWrapper';
 
 export type RootStackParamList = {
+  Landing: undefined;
   Auth: undefined;
   Login: undefined;
   Register: undefined;
@@ -50,6 +52,7 @@ export const RootNavigator = () => {
           <Stack.Screen name="MainApp" component={TabNavigator} />
         ) : (
           <>
+            <Stack.Screen name="Landing" component={LandingScreen} />
             <Stack.Screen name="Login" component={LoginScreen} />
             <Stack.Screen name="Register" component={RegisterScreen} />
           </>
