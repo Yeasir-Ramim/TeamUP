@@ -6,6 +6,7 @@ import {
   FlatList,
   TouchableOpacity,
   Pressable,
+  Platform,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import * as Haptics from 'expo-haptics';
@@ -73,10 +74,12 @@ export const NotificationsScreen: React.FC<NotificationsScreenProps> = ({
   }, []);
 
   const handleMarkAsRead = async (notification: AppNotification) => {
-    try {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    } catch {
-      // safe fallback
+    if (Platform.OS !== 'web') {
+      try {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      } catch {
+        // safe fallback
+      }
     }
 
     // Optimistic UI update
@@ -114,10 +117,12 @@ export const NotificationsScreen: React.FC<NotificationsScreenProps> = ({
   };
 
   const handleMarkAllAsRead = async () => {
-    try {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    } catch {
-      // safe fallback
+    if (Platform.OS !== 'web') {
+      try {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      } catch {
+        // safe fallback
+      }
     }
 
     setNotifications((prev) => prev.map((item) => ({ ...item, isRead: true })));
@@ -131,10 +136,12 @@ export const NotificationsScreen: React.FC<NotificationsScreenProps> = ({
   };
 
   const handleDeleteNotification = async (id: string) => {
-    try {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    } catch {
-      // safe fallback
+    if (Platform.OS !== 'web') {
+      try {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      } catch {
+        // safe fallback
+      }
     }
 
     const target = notifications.find((item) => item.id === id);

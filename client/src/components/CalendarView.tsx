@@ -8,6 +8,7 @@ import {
   TextInput,
   Modal,
   ScrollView,
+  Platform,
 } from 'react-native';
 import { Calendar, DateData } from 'react-native-calendars';
 import * as Haptics from 'expo-haptics';
@@ -121,10 +122,12 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
   }, [events, selectedDate, colors]);
 
   const handleDayPress = (day: DateData) => {
-    try {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    } catch {
-      // safe fallback
+    if (Platform.OS !== 'web') {
+      try {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      } catch {
+        // safe fallback
+      }
     }
     setSelectedDate(day.dateString);
   };
@@ -138,10 +141,12 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
     setFormError(null);
     setIsSubmitting(true);
 
-    try {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    } catch {
-      // safe fallback
+    if (Platform.OS !== 'web') {
+      try {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      } catch {
+        // safe fallback
+      }
     }
 
     const startDateIso = `${selectedDate}T12:00:00Z`;

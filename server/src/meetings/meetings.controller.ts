@@ -70,9 +70,9 @@ export class MeetingsController {
   }
 
   /**
-   * Manually finalize meeting and select winning slot (Leader only)
+   * Manually finalize / confirm meeting and select winning slot (Leader only)
    */
-  @Post('meetings/:id/finalize')
+  @Post(['meetings/:id/finalize', 'meetings/:id/confirm'])
   @HttpCode(HttpStatus.OK)
   async finalizeMeeting(
     @CurrentUser() user: AuthenticatedUser,
