@@ -37,11 +37,23 @@ export interface MatchingCandidate {
 
 export type InvitationStatus = 'idle' | 'inviting' | 'invited' | 'error';
 
+const POPULAR_SKILLS = [
+  'React Native',
+  'TypeScript',
+  'Node.js',
+  'Python',
+  'PostgreSQL',
+  'Figma',
+  'UI/UX',
+  'Flutter',
+  'Docker',
+];
+
 export const MatchingScreen: React.FC = () => {
   const { colors, typography, spacing } = useTheme();
 
-  const [projectId, setProjectId] = useState<string>('project-1');
-  const [activeProjectId, setActiveProjectId] = useState<string>('project-1');
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [activeTarget, setActiveTarget] = useState<string>('project-1');
   const [candidates, setCandidates] = useState<MatchingCandidate[]>([]);
   const [screenState, setScreenState] = useState<ScreenState>('loading');
   const [errorMessage, setErrorMessage] = useState<string>('');
@@ -52,13 +64,18 @@ export const MatchingScreen: React.FC = () => {
   const [inviteStatuses, setInviteStatuses] = useState<Record<string, InvitationStatus>>({});
   const [inviteErrors, setInviteErrors] = useState<Record<string, string>>({});
 
-  const loadRecommendations = useCallback(async (targetProjectId: string) => {
+  const loadRecommendations = useCallback(async (target: string) => {
+    const trimmedTarget = target.trim();
+    if (!trimmedTarget) return;
+
     setScreenState('loading');
     setErrorMessage('');
     setErrorCode(undefined);
 
     try {
-      const data = await api.get<MatchingCandidate[]>(`/projects/${targetProjectId}/recommendations`);
+      const data = await api.get<MatchingCandidate[]>(
+        `/projects/${encodeURIComponent(trimmedTarget)}/recommendations`
+      );
       const candidateList = Array.isArray(data) ? data : [];
       setCandidates(candidateList);
 
@@ -86,12 +103,17 @@ export const MatchingScreen: React.FC = () => {
     let isMounted = true;
 
     async function init() {
+      const trimmedTarget = activeTarget.trim();
+      if (!trimmedTarget) return;
+
       setScreenState('loading');
       setErrorMessage('');
       setErrorCode(undefined);
 
       try {
-        const data = await api.get<MatchingCandidate[]>(`/projects/${activeProjectId}/recommendations`);
+        const data = await api.get<MatchingCandidate[]>(
+          `/projects/${encodeURIComponent(trimmedTarget)}/recommendations`
+        );
         if (!isMounted) return;
 
         const candidateList = Array.isArray(data) ? data : [];
@@ -121,21 +143,27 @@ export const MatchingScreen: React.FC = () => {
     return () => {
       isMounted = false;
     };
-  }, [activeProjectId]);
+  }, [activeTarget]);
 
   const onRefresh = async () => {
     setRefreshing(true);
     try {
-      await loadRecommendations(activeProjectId);
+      await loadRecommendations(activeTarget);
     } finally {
       setRefreshing(false);
     }
   };
 
-  const handleSearchProject = () => {
-    if (projectId.trim()) {
-      setActiveProjectId(projectId.trim());
+  const handleSearch = () => {
+    const trimmed = searchQuery.trim();
+    if (trimmed) {
+      setActiveTarget(trimmed);
     }
+  };
+
+  const handleSelectSkill = (skill: string) => {
+    setSearchQuery(skill);
+    setActiveTarget(skill);
   };
 
   const handleInvite = async (candidate: MatchingCandidate) => {
@@ -146,7 +174,8 @@ export const MatchingScreen: React.FC = () => {
     setInviteErrors((prev) => ({ ...prev, [targetUserId]: '' }));
 
     try {
-      await api.post(`/projects/${activeProjectId}/invite`, {
+      const inviteProjectId = activeTarget.startsWith('project-') ? activeTarget : 'project-1';
+      await api.post(`/projects/${inviteProjectId}/invite`, {
         userId: targetUserId,
         role: 'MEMBER',
       });
@@ -181,7 +210,7 @@ export const MatchingScreen: React.FC = () => {
       }
     >
       <View style={{ padding: spacing.md }}>
-        {/* Top Header & Project Selector Card */}
+        {/* Top Header & Skill Search Card */}
         <Card style={styles.headerCard}>
           <View style={styles.titleRow}>
             <Text
@@ -200,10 +229,10 @@ export const MatchingScreen: React.FC = () => {
               { color: colors.onSurfaceVariant, marginTop: spacing.xs },
             ]}
           >
-            AI-weighted team recommendation engine. Discover candidates matching your project skills.
+            Search candidates by skill (e.g. React Native, TypeScript, Python) or project ID to find the best match for your team.
           </Text>
 
-          {/* Project Selector Bar */}
+          {/* Skill Search Bar */}
           <View style={[styles.projectInputRow, { marginTop: spacing.md }]}>
             <TextInput
               style={[
@@ -214,19 +243,74 @@ export const MatchingScreen: React.FC = () => {
                   borderColor: colors.outlineVariant,
                 },
               ]}
-              value={projectId}
-              onChangeText={setProjectId}
-              placeholder="Enter Project ID (e.g. project-1)"
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              onSubmitEditing={handleSearch}
+              placeholder="Enter skill name (e.g. React Native, TypeScript, Python)"
               placeholderTextColor={colors.onSurfaceVariant}
+              returnKeyType="search"
             />
             <TouchableOpacity
               style={[styles.searchButton, { backgroundColor: colors.primary }]}
-              onPress={handleSearchProject}
+              onPress={handleSearch}
             >
               <Text style={[styles.searchButtonText, { color: colors.onPrimary }]}>
                 Search
               </Text>
             </TouchableOpacity>
+          </View>
+
+          {/* Popular Skill Quick-Picks */}
+          <View style={{ marginTop: spacing.sm }}>
+            <Text
+              style={[
+                styles.quickPickLabel,
+                { color: colors.onSurfaceVariant, marginBottom: 6 },
+              ]}
+            >
+              Popular Skills:
+            </Text>
+            <View style={styles.chipRow}>
+              {POPULAR_SKILLS.map((skill) => {
+                const isSelected =
+                  activeTarget.toLowerCase() === skill.toLowerCase() ||
+                  searchQuery.toLowerCase() === skill.toLowerCase();
+                return (
+                  <Chip
+                    key={skill}
+                    label={`#${skill}`}
+                    selected={isSelected}
+                    variant={isSelected ? 'primary' : 'secondary'}
+                    onPress={() => handleSelectSkill(skill)}
+                    style={{ marginRight: 6, marginBottom: 6 }}
+                  />
+                );
+              })}
+            </View>
+          </View>
+
+          {/* Current Active Filter Indicator & Target Project */}
+          <View style={[styles.activeFilterRow, { marginTop: spacing.sm, flexWrap: 'wrap' }]}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginRight: 12, marginBottom: 4 }}>
+              <Text style={{ color: colors.onSurfaceVariant, fontSize: 12 }}>
+                Searching by:
+              </Text>
+              <Badge
+                label={activeTarget}
+                variant="secondary"
+                style={{ marginLeft: 6 }}
+              />
+            </View>
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+              <Text style={{ color: colors.onSurfaceVariant, fontSize: 12 }}>
+                Inviting to:
+              </Text>
+              <Badge
+                label="AI Study Buddy (project-1)"
+                variant="primary"
+                style={{ marginLeft: 6 }}
+              />
+            </View>
           </View>
         </Card>
 
@@ -234,12 +318,12 @@ export const MatchingScreen: React.FC = () => {
         <StateWrapper
           state={screenState}
           emptyTitle="No Candidates Found"
-          emptySubtitle="No candidates matching your project's skill requirements were found right now. Try updating your project's target skills."
+          emptySubtitle={`We couldn't find candidates matching "${activeTarget}". Try searching for another skill like React Native, Python, or TypeScript.`}
           emptyActionLabel="Refresh Candidates"
-          onEmptyAction={() => loadRecommendations(activeProjectId)}
+          onEmptyAction={() => loadRecommendations(activeTarget)}
           errorMessage={errorMessage}
           errorCode={errorCode}
-          onRetry={() => loadRecommendations(activeProjectId)}
+          onRetry={() => loadRecommendations(activeTarget)}
         >
           <View style={{ marginTop: spacing.md }}>
             <Text
@@ -378,7 +462,7 @@ export const MatchingScreen: React.FC = () => {
                   )}
 
                   {/* GitHub Profile Stat Summary */}
-                  {candidate.githubUsername && (
+                  {candidate.githubUsername ? (
                     <View
                       style={[
                         styles.githubSummaryRow,
@@ -389,7 +473,7 @@ export const MatchingScreen: React.FC = () => {
                       ]}
                     >
                       <Text style={{ color: colors.onSurfaceVariant, fontSize: 13 }}>
-                        🐙 @{candidate.githubUsername}
+                        @{candidate.githubUsername}
                         {candidate.publicRepos !== undefined
                           ? ` • ${candidate.publicRepos} repos`
                           : ''}
@@ -398,7 +482,7 @@ export const MatchingScreen: React.FC = () => {
                           : ''}
                       </Text>
                     </View>
-                  )}
+                  ) : null}
 
                   {/* Invitation Failure Error Banner */}
                   {status === 'error' && inviteErr ? (
@@ -408,7 +492,7 @@ export const MatchingScreen: React.FC = () => {
                         { color: colors.error, marginTop: spacing.xs },
                       ]}
                     >
-                      ⚠️ {inviteErr}
+                      {inviteErr}
                     </Text>
                   ) : null}
 
@@ -545,5 +629,13 @@ const styles = StyleSheet.create({
   inviteErrorText: {
     fontSize: 13,
     fontWeight: '500',
+  },
+  quickPickLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  activeFilterRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
 });

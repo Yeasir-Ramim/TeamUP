@@ -121,7 +121,7 @@ export const StateWrapper: React.FC<StateWrapperProps> = ({
             { backgroundColor: colors.primaryContainer },
           ]}
         >
-          <Text style={{ fontSize: 32 }}>🔍</Text>
+          <Text style={{ fontSize: 24, fontWeight: '700' }}>?</Text>
         </View>
         <Text
           style={[
@@ -146,13 +146,13 @@ export const StateWrapper: React.FC<StateWrapperProps> = ({
         >
           {emptySubtitle}
         </Text>
-        {emptyActionLabel && onEmptyAction && (
+        {emptyActionLabel && onEmptyAction ? (
           <Button
             title={emptyActionLabel}
             onPress={onEmptyAction}
             style={{ marginTop: spacing.md }}
           />
-        )}
+        ) : null}
       </View>
     );
   }
@@ -166,7 +166,7 @@ export const StateWrapper: React.FC<StateWrapperProps> = ({
             { backgroundColor: colors.errorContainer },
           ]}
         >
-          <Text style={{ fontSize: 32 }}>⚠️</Text>
+          <Text style={{ fontSize: 24, fontWeight: '700', color: colors.onErrorContainer }}>!</Text>
         </View>
         <Text
           style={[

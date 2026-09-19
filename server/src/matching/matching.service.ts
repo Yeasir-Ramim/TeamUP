@@ -33,7 +33,7 @@ export class MatchingService {
     requesterUserId?: string,
   ): Promise<MatchingCandidate[]> {
     // 1. Fetch project with required skills and current members
-    const project = await this.prisma.project.findUnique({
+    let project = await this.prisma.project.findUnique({
       where: { id: projectId },
       include: {
         requiredSkills: {
@@ -51,13 +51,47 @@ export class MatchingService {
     });
 
     if (!project) {
-      throw new NotFoundException(`Project with ID '${projectId}' not found`);
+      const skillTerms = projectId
+        .split(/[,+]/)
+        .map((s) => s.trim())
+        .filter(Boolean);
+
+      const matchedSkills = this.prisma.skill
+        ? await this.prisma.skill.findMany({
+            where: {
+              OR: skillTerms.map((term) => ({
+                name: { contains: term, mode: 'insensitive' },
+              })),
+            },
+          })
+        : [];
+
+      if (matchedSkills.length > 0) {
+        project = {
+          id: projectId,
+          creatorId: requesterUserId || '',
+          requiredSkills: matchedSkills.map((s) => ({
+            id: s.id,
+            projectId,
+            skillId: s.id,
+            minimumExperience: ExperienceLevel.BEGINNER,
+            skill: s,
+          })),
+          members: [],
+        } as any;
+      } else {
+        throw new NotFoundException(
+          `No project or skills matching '${projectId}' found`,
+        );
+      }
     }
+
+    const targetProject = project!;
 
     // 2. Build exclusion list (project creator + accepted active team members + requester)
     const excludedUserIds = new Set<string>([
-      project.creatorId,
-      ...project.members
+      targetProject.creatorId,
+      ...targetProject.members
         .filter((m) => m.status === MemberStatus.ACCEPTED)
         .map((m) => m.userId),
     ]);
@@ -68,7 +102,7 @@ export class MatchingService {
 
     // Track pending invites/applications for the "invited" flag
     const pendingInvitedUserIds = new Set<string>(
-      project.members
+      targetProject.members
         .filter((m) => m.status === MemberStatus.PENDING)
         .map((m) => m.userId),
     );
@@ -77,7 +111,7 @@ export class MatchingService {
     const candidateProfiles = await this.prisma.profile.findMany({
       where: {
         userId: {
-          notIn: Array.from(excludedUserIds),
+          notIn: Array.from(excludedUserIds).filter(Boolean),
         },
       },
       include: {
@@ -100,7 +134,7 @@ export class MatchingService {
       },
     });
 
-    const requiredSkills = project.requiredSkills;
+    const requiredSkills = targetProject.requiredSkills;
     const requiredSkillIds = requiredSkills.map((rs) => rs.skillId);
     const requiredSkillsCount = requiredSkillIds.length;
 

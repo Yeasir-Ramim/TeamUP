@@ -8,6 +8,7 @@ import {
   TextInput,
   Modal,
   ScrollView,
+  Platform,
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { useTheme } from '../../theme/ThemeContext';
@@ -29,7 +30,7 @@ export interface SchedulerScreenProps {
 }
 
 export const SchedulerScreen: React.FC<SchedulerScreenProps> = ({
-  projectId = 'proj-101',
+  projectId = 'project-1',
   onMeetingConfirmed,
 }) => {
   const { colors, typography, spacing } = useTheme();
@@ -87,10 +88,12 @@ export const SchedulerScreen: React.FC<SchedulerScreenProps> = ({
   }, [projectId]);
 
   const handleVote = async (meetingId: string, slotId: string) => {
-    try {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    } catch {
-      // safe fallback
+    if (Platform.OS !== 'web') {
+      try {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      } catch {
+        // safe fallback
+      }
     }
 
     // Optimistic UI update
@@ -119,10 +122,12 @@ export const SchedulerScreen: React.FC<SchedulerScreenProps> = ({
   };
 
   const handleConfirmSlot = async (meetingId: string, slotId: string) => {
-    try {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    } catch {
-      // safe fallback
+    if (Platform.OS !== 'web') {
+      try {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      } catch {
+        // safe fallback
+      }
     }
 
     setMeetings((prev) =>
@@ -158,10 +163,12 @@ export const SchedulerScreen: React.FC<SchedulerScreenProps> = ({
     setFormError(null);
     setIsSubmitting(true);
 
-    try {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    } catch {
-      // safe fallback
+    if (Platform.OS !== 'web') {
+      try {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      } catch {
+        // safe fallback
+      }
     }
 
     const dto: CreateMeetingDto = {

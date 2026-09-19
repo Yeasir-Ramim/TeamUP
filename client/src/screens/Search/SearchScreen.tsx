@@ -211,7 +211,7 @@ export const SearchScreen: React.FC = () => {
               ]}
               value={searchInput}
               onChangeText={setSearchInput}
-              placeholder="🔍 Search title, description, or domain..."
+              placeholder="Search title, description, or domain..."
               placeholderTextColor={colors.onSurfaceVariant}
             />
 
@@ -248,7 +248,7 @@ export const SearchScreen: React.FC = () => {
                   fontSize: 14,
                 }}
               >
-                🎛️ Filter Sheet {activeFilterCount > 0 ? `(${activeFilterCount})` : ''}
+                Filter Sheet {activeFilterCount > 0 ? `(${activeFilterCount})` : ''}
               </Text>
             </TouchableOpacity>
 
