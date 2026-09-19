@@ -292,27 +292,82 @@ async function main() {
     },
   });
 
-  // 6. Ensure all users have LEADER role on project-1 for testing and candidate invitation
-  const allUsers = await prisma.user.findMany();
-  for (const u of allUsers) {
-    await prisma.projectMember.upsert({
-      where: {
-        projectId_userId: {
-          projectId: 'project-1',
-          userId: u.id,
+  // 5b. Seed Project 'proj-101' for Scheduler, Calendar & Tests
+  await prisma.project.upsert({
+    where: { id: 'proj-101' },
+    update: {},
+    create: {
+      id: 'proj-101',
+      title: 'AI Study Buddy & Collaboration Hub',
+      description:
+        'Team scheduling and calendar workspace for sprint milestones and meetings.',
+      domain: 'Education & AI',
+      semester: 'Fall 2026',
+      status: ProjectStatus.OPEN,
+      maxMembers: 4,
+      creatorId: creatorUser.id,
+      members: {
+        create: {
+          userId: creatorUser.id,
+          role: ProjectRole.LEADER,
+          status: MemberStatus.ACCEPTED,
         },
       },
-      update: {
-        role: ProjectRole.LEADER,
-        status: MemberStatus.ACCEPTED,
-      },
-      create: {
-        projectId: 'project-1',
-        userId: u.id,
-        role: ProjectRole.LEADER,
-        status: MemberStatus.ACCEPTED,
-      },
+    },
+  });
+
+  // Seed sample meetings for project-1 and proj-101
+  for (const pid of ['project-1', 'proj-101']) {
+    const existingMeeting = await prisma.meeting.findFirst({
+      where: { projectId: pid },
     });
+    if (!existingMeeting) {
+      await prisma.meeting.create({
+        data: {
+          projectId: pid,
+          title: 'Sprint Planning & Architecture Review',
+          description: 'Review project architecture, tasks distribution, and deadlines.',
+          status: 'VOTING',
+          slots: {
+            create: [
+              {
+                startTime: new Date(Date.now() + 86400000),
+                endTime: new Date(Date.now() + 90000000),
+              },
+              {
+                startTime: new Date(Date.now() + 172800000),
+                endTime: new Date(Date.now() + 176400000),
+              },
+            ],
+          },
+        },
+      });
+    }
+  }
+
+  // 6. Ensure all users have LEADER role on project-1 and proj-101 for testing and candidate invitation
+  const allUsers = await prisma.user.findMany();
+  for (const u of allUsers) {
+    for (const pid of ['project-1', 'proj-101', 'project-2', 'project-3']) {
+      await prisma.projectMember.upsert({
+        where: {
+          projectId_userId: {
+            projectId: pid,
+            userId: u.id,
+          },
+        },
+        update: {
+          role: ProjectRole.LEADER,
+          status: MemberStatus.ACCEPTED,
+        },
+        create: {
+          projectId: pid,
+          userId: u.id,
+          role: ProjectRole.LEADER,
+          status: MemberStatus.ACCEPTED,
+        },
+      });
+    }
   }
 
   console.log('Database seeding complete!');

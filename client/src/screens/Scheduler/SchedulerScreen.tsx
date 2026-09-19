@@ -29,7 +29,7 @@ export interface SchedulerScreenProps {
 }
 
 export const SchedulerScreen: React.FC<SchedulerScreenProps> = ({
-  projectId = 'proj-101',
+  projectId = 'project-1',
   onMeetingConfirmed,
 }) => {
   const { colors, typography, spacing } = useTheme();
