@@ -16,6 +16,7 @@ import { CreateIdeaDto } from './dto/create-idea.dto';
 import { UpdateIdeaDto } from './dto/update-idea.dto';
 import { IdeaFilterDto } from './dto/idea-filter.dto';
 import { ExpressInterestDto } from './dto/express-interest.dto';
+import { GenerateIdeaDto } from './dto/generate-idea.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '../auth/interfaces/jwt-payload.interface';
@@ -23,6 +24,19 @@ import type { AuthenticatedUser } from '../auth/interfaces/jwt-payload.interface
 @Controller('ideas')
 export class IdeasController {
   constructor(private readonly ideasService: IdeasService) {}
+
+  /**
+   * Generate an AI project idea with query caching
+   */
+  @Post('generate')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  async generateIdea(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: GenerateIdeaDto,
+  ) {
+    return this.ideasService.generateIdea(user.userId, dto);
+  }
 
   /**
    * Publish a new community idea

@@ -8,6 +8,7 @@ describe('IdeasController', () => {
   let controller: IdeasController;
 
   const mockIdeasService = {
+    generateIdea: jest.fn(),
     createIdea: jest.fn(),
     findAll: jest.fn(),
     getIdeaById: jest.fn(),
@@ -35,6 +36,28 @@ describe('IdeasController', () => {
 
   it('should be defined', () => {
     expect(controller).toBeDefined();
+  });
+
+  describe('generateIdea', () => {
+    it('should delegate to ideasService.generateIdea', async () => {
+      const dto = {
+        domain: 'Fintech',
+        techStack: ['React Native', 'NestJS'],
+      };
+      const expectedResult = {
+        id: 'gen-123',
+        title: 'Fintech Automated Budget Assistant',
+        domain: 'Fintech',
+      };
+      mockIdeasService.generateIdea.mockResolvedValue(expectedResult);
+
+      const result = await controller.generateIdea(mockUser, dto);
+      expect(result).toEqual(expectedResult);
+      expect(mockIdeasService.generateIdea).toHaveBeenCalledWith(
+        mockUser.userId,
+        dto,
+      );
+    });
   });
 
   describe('createIdea', () => {

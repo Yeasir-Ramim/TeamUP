@@ -11,13 +11,23 @@ import { CreateIdeaDto } from './dto/create-idea.dto';
 import { UpdateIdeaDto } from './dto/update-idea.dto';
 import { IdeaFilterDto } from './dto/idea-filter.dto';
 import { ExpressInterestDto } from './dto/express-interest.dto';
+import { GenerateIdeaDto } from './dto/generate-idea.dto';
+import { AiIdeaService } from './ai-idea.service';
 
 @Injectable()
 export class IdeasService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly notificationsService: NotificationsService,
+    private readonly aiIdeaService: AiIdeaService,
   ) {}
+
+  /**
+   * Generate an AI project idea with query caching
+   */
+  async generateIdea(userId: string, dto: GenerateIdeaDto) {
+    return this.aiIdeaService.generateIdea(dto);
+  }
 
   /**
    * Create a new community idea
