@@ -7,6 +7,8 @@ import {
 import { IdeasService } from './ideas.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { AiIdeaService } from './ai-idea.service';
+import { ExperienceLevel } from '@prisma/client';
 
 describe('IdeasService', () => {
   let service: IdeasService;
@@ -29,6 +31,10 @@ describe('IdeasService', () => {
     notifyUser: jest.fn(),
   };
 
+  const mockAiIdeaService = {
+    generateIdea: jest.fn(),
+  };
+
   beforeEach(async () => {
     jest.clearAllMocks();
 
@@ -37,6 +43,7 @@ describe('IdeasService', () => {
         IdeasService,
         { provide: PrismaService, useValue: mockPrismaService },
         { provide: NotificationsService, useValue: mockNotificationsService },
+        { provide: AiIdeaService, useValue: mockAiIdeaService },
       ],
     }).compile();
 
@@ -45,6 +52,27 @@ describe('IdeasService', () => {
 
   it('should be defined', () => {
     expect(service).toBeDefined();
+  });
+
+  describe('generateIdea', () => {
+    it('should delegate to aiIdeaService.generateIdea', async () => {
+      const dto = {
+        domain: 'Fintech',
+        techStack: ['React Native', 'NestJS'],
+        difficulty: ExperienceLevel.INTERMEDIATE,
+      };
+
+      const mockResult = {
+        id: 'gen-123',
+        title: 'Fintech Automated Budget Assistant',
+        domain: 'Fintech',
+      };
+      mockAiIdeaService.generateIdea.mockResolvedValue(mockResult);
+
+      const result = await service.generateIdea('user-1', dto);
+      expect(result).toEqual(mockResult);
+      expect(mockAiIdeaService.generateIdea).toHaveBeenCalledWith(dto);
+    });
   });
 
   describe('createIdea', () => {

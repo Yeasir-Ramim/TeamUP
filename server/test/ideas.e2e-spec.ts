@@ -55,6 +55,7 @@ describe('Community Idea Hub (e2e)', () => {
   ];
 
   const mockNotifications: any[] = [];
+  const mockCachedQueries: any[] = [];
 
   const mockPrismaService = {
     user: {
@@ -73,6 +74,38 @@ describe('Community Idea Hub (e2e)', () => {
           return Promise.resolve(null);
         },
       ),
+    },
+    cachedIdeaQuery: {
+      findUnique: jest.fn(({ where }: { where: { queryHash: string } }) => {
+        const found = mockCachedQueries.find(
+          (c) => c.queryHash === where.queryHash,
+        );
+        return Promise.resolve(found || null);
+      }),
+      upsert: jest.fn(({ where, create, update }: any) => {
+        const idx = mockCachedQueries.findIndex(
+          (c) => c.queryHash === where.queryHash,
+        );
+        if (idx !== -1) {
+          mockCachedQueries[idx] = { ...mockCachedQueries[idx], ...update };
+          return Promise.resolve(mockCachedQueries[idx]);
+        } else {
+          const entry = { id: `cache-${Date.now()}`, ...create };
+          mockCachedQueries.push(entry);
+          return Promise.resolve(entry);
+        }
+      }),
+      delete: jest.fn(({ where }: { where: { queryHash: string } }) => {
+        const idx = mockCachedQueries.findIndex(
+          (c) => c.queryHash === where.queryHash,
+        );
+        if (idx !== -1) {
+          const removed = mockCachedQueries.splice(idx, 1)[0];
+          return Promise.resolve(removed);
+        }
+        return Promise.resolve(null);
+      }),
+      deleteMany: jest.fn(() => Promise.resolve({ count: 0 })),
     },
     idea: {
       create: jest.fn(({ data }: any) => {
@@ -146,7 +179,55 @@ describe('Community Idea Hub (e2e)', () => {
     },
   };
 
+  const originalFetch = global.fetch;
+
   beforeAll(async () => {
+    global.fetch = jest.fn((url: any, options: any) => {
+      if (
+        typeof url === 'string' &&
+        (url.includes('googleapis.com') ||
+          url.includes('openai.com') ||
+          url.includes('anthropic.com'))
+      ) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            candidates: [
+              {
+                content: {
+                  parts: [
+                    {
+                      text: JSON.stringify({
+                        title: 'Fintech Automated Budget Assistant',
+                        description:
+                          'An AI-powered expense splitting and budget forecasting app for student teams.',
+                        problem:
+                          'Student teams and roommates struggle to transparently track shared expenses and divide utility bills.',
+                        domain: 'Fintech',
+                        techStack: ['React Native', 'NestJS'],
+                        difficulty: 'INTERMEDIATE',
+                        estimatedDuration: '4 weeks',
+                        teamSize: '3 members',
+                        features: [
+                          'OCR receipt scanning',
+                          'Automated bill division',
+                        ],
+                        roadmap: [
+                          'Phase 1: Database schema, authentication, and core models',
+                          'Phase 2: Receipt OCR ingestion pipeline and expense splitting logic',
+                        ],
+                      }),
+                    },
+                  ],
+                },
+              },
+            ],
+          }),
+        } as Response);
+      }
+      return originalFetch(url, options);
+    });
+
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
     })
@@ -192,7 +273,88 @@ describe('Community Idea Hub (e2e)', () => {
   });
 
   afterAll(async () => {
+    global.fetch = originalFetch;
     await app.close();
+  });
+
+  describe('POST /api/v1/ideas/generate', () => {
+    it('should reject unauthenticated generation requests with 401', async () => {
+      await request(app.getHttpServer())
+        .post('/api/v1/ideas/generate')
+        .send({
+          domain: 'Fintech',
+          techStack: ['React Native', 'NestJS'],
+          difficulty: 'INTERMEDIATE',
+        })
+        .expect(401);
+    });
+
+    it('should reject invalid payload with 400', async () => {
+      const res = await request(app.getHttpServer())
+        .post('/api/v1/ideas/generate')
+        .set('Authorization', `Bearer ${authorToken}`)
+        .send({
+          domain: '', // Domain cannot be empty
+        })
+        .expect(400);
+
+      expect(res.body.success).toBe(false);
+    });
+
+    it('should generate project idea on cache miss and return 200', async () => {
+      const res = await request(app.getHttpServer())
+        .post('/api/v1/ideas/generate')
+        .set('Authorization', `Bearer ${authorToken}`)
+        .send({
+          domain: 'Fintech',
+          techStack: ['React Native', 'NestJS'],
+          difficulty: 'INTERMEDIATE',
+        })
+        .expect(200);
+
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.domain).toBe('Fintech');
+      expect(res.body.data.techStack).toEqual(
+        expect.arrayContaining(['React Native', 'NestJS']),
+      );
+      expect(res.body.data.difficulty).toBe('INTERMEDIATE');
+      expect(Array.isArray(res.body.data.features)).toBe(true);
+      expect(Array.isArray(res.body.data.roadmap)).toBe(true);
+      expect(res.body.data.isCached).toBe(false);
+      expect(mockCachedQueries.length).toBeGreaterThan(0);
+    });
+
+    it('should return cached idea on subsequent identical query with isCached: true', async () => {
+      const res = await request(app.getHttpServer())
+        .post('/api/v1/ideas/generate')
+        .set('Authorization', `Bearer ${collaboratorToken}`)
+        .send({
+          domain: 'Fintech',
+          techStack: ['React Native', 'NestJS'],
+          difficulty: 'INTERMEDIATE',
+        })
+        .expect(200);
+
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.domain).toBe('Fintech');
+      expect(res.body.data.isCached).toBe(true);
+    });
+
+    it('should return 503 when LLM service is busy or fails', async () => {
+      const res = await request(app.getHttpServer())
+        .post('/api/v1/ideas/generate')
+        .set('Authorization', `Bearer ${authorToken}`)
+        .send({
+          domain: 'Cybersecurity',
+          simulateFailure: true,
+        })
+        .expect(503);
+
+      expect(res.body.success).toBe(false);
+      expect(res.body.error.message).toContain(
+        'LLM Service Busy — AI generator is experiencing high demand. Please try again in a moment.',
+      );
+    });
   });
 
   describe('POST /api/v1/ideas', () => {
