@@ -31,7 +31,11 @@ export class GithubController {
     @CurrentUser() user: AuthenticatedUser,
     @Body() dto: LinkGithubDto,
   ) {
-    return this.githubService.linkAccount(user.userId, dto.code);
+    return this.githubService.linkAccount(
+      user.userId,
+      dto.code,
+      ...(dto.redirectUri ? [dto.redirectUri] : []),
+    );
   }
 
   @Get('stats/:username')

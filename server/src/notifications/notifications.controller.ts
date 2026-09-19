@@ -88,7 +88,7 @@ export class NotificationsController {
   ) {
     return this.notificationsService.unregisterPushToken(
       user.userId,
-      dto.token,
+      dto.token || dto.pushToken || '',
     );
   }
 

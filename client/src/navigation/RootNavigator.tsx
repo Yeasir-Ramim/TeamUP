@@ -50,7 +50,6 @@ export const RootNavigator = () => {
           <Stack.Screen name="MainApp" component={TabNavigator} />
         ) : (
           <>
-            <Stack.Screen name="MainApp" component={TabNavigator} />
             <Stack.Screen name="Login" component={LoginScreen} />
             <Stack.Screen name="Register" component={RegisterScreen} />
           </>

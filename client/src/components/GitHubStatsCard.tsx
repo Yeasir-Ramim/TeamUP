@@ -6,6 +6,7 @@ import {
   ActivityIndicator,
   Linking,
   TouchableOpacity,
+  Platform,
 } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
 import { Card } from './Card';
@@ -87,23 +88,32 @@ export const GitHubStatsCard: React.FC<GitHubStatsCardProps> = ({
     };
   }, [profileId, githubUsername]);
 
-  const handleOAuthConnect = () => {
-    if (onConnectPress) {
-      onConnectPress();
-      return;
-    }
-    const clientId = process.env.GITHUB_CLIENT_ID || 'your_github_client_id';
-    const redirectUri = 'teamup://github-callback';
-    const authUrl = `https://github.com/login/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(
-      redirectUri
-    )}&scope=read:user%20repo`;
+  const handleOAuthConnect = async () => {
+    const redirectUri =
+      Platform.OS === 'web' && typeof window !== 'undefined'
+        ? window.location.origin
+        : 'teamup://github-callback';
 
-    Linking.openURL(authUrl).catch(() => {
-      // Fallback: open GitHub user page or user edit screen
-      if (githubUsername) {
-        Linking.openURL(`https://github.com/${githubUsername}`);
+    let targetUrl = `https://github.com/login/oauth/authorize?client_id=Ov23liDPxJFmHfgane2n&scope=read:user%20repo&redirect_uri=${encodeURIComponent(
+      redirectUri
+    )}`;
+
+    try {
+      const res = await api.get<{ url: string }>(
+        `/github/auth-url?redirectUri=${encodeURIComponent(redirectUri)}`
+      );
+      if (res && res.url) {
+        targetUrl = res.url;
       }
-    });
+    } catch {
+      // Use fallback targetUrl if network request fails
+    }
+
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      window.location.href = targetUrl;
+    } else {
+      await Linking.openURL(targetUrl);
+    }
   };
 
   if (loading) {
@@ -131,7 +141,7 @@ export const GitHubStatsCard: React.FC<GitHubStatsCardProps> = ({
               { color: colors.onSurface, fontSize: typography.titleMedium.fontSize },
             ]}
           >
-            🐙 GitHub Integration
+            GitHub Integration
           </Text>
           <Badge label="Not Connected" variant="secondary" />
         </View>
@@ -157,14 +167,14 @@ export const GitHubStatsCard: React.FC<GitHubStatsCardProps> = ({
             { color: colors.onSurface, fontSize: typography.titleMedium.fontSize },
           ]}
         >
-          🐙 GitHub Stats
+          GitHub Stats
         </Text>
         <Badge label="Verified" variant="primary" />
       </View>
 
       {failed && (
         <Text style={[styles.warningText, { color: colors.tertiary }]}>
-          ⚡ Live GitHub API rate-limited; showing cached profile stats.
+          Live GitHub API rate-limited; showing cached profile stats.
         </Text>
       )}
 
