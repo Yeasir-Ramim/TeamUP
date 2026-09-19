@@ -17,9 +17,10 @@ export const pushNotificationService = {
   /**
    * Deregister device push token on logout
    */
-  deregisterDevicePushToken: async (): Promise<boolean> => {
+  deregisterDevicePushToken: async (customToken?: string): Promise<boolean> => {
     try {
-      await notificationService.deregisterPushToken();
+      const pushToken = customToken || 'ExponentPushToken[mock-device-token-teamup-2026]';
+      await notificationService.deregisterPushToken(pushToken);
       return true;
     } catch {
       return false;

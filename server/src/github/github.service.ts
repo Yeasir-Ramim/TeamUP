@@ -65,6 +65,7 @@ export class GithubService {
   async linkAccount(
     userId: string,
     code: string,
+    redirectUri?: string,
   ): Promise<{ username: string; avatarUrl?: string }> {
     const clientId = this.configService.get<string>('GITHUB_CLIENT_ID');
     const clientSecret = this.configService.get<string>('GITHUB_CLIENT_SECRET');
@@ -76,6 +77,15 @@ export class GithubService {
     // 1. Exchange temporary code for access token with GitHub
     let tokenRes: Response;
     try {
+      const payload: Record<string, string> = {
+        client_id: clientId || '',
+        client_secret: clientSecret || '',
+        code,
+      };
+      if (redirectUri) {
+        payload.redirect_uri = redirectUri;
+      }
+
       tokenRes = await fetch('https://github.com/login/oauth/access_token', {
         method: 'POST',
         headers: {
@@ -83,11 +93,7 @@ export class GithubService {
           'Content-Type': 'application/json',
           'User-Agent': 'TeamUp-Backend/1.0',
         },
-        body: JSON.stringify({
-          client_id: clientId,
-          client_secret: clientSecret,
-          code,
-        }),
+        body: JSON.stringify(payload),
       });
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);

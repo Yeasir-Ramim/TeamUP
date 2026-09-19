@@ -48,7 +48,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const fetchProfile = async () => {
     try {
       const profileData = await api.get<UserProfile>('/profiles/me');
-      setUser(profileData);
+      setUser((prev) => (prev ? { ...prev, ...profileData } : profileData));
     } catch (err) {
       if (err instanceof ApiError && err.code === 'UNAUTHORIZED') {
         await tokenStorage.clearAll();
@@ -102,17 +102,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const login = async (email: string, password: string): Promise<void> => {
     setIsLoading(true);
     try {
-      const res = await api.post<{ accessToken: string; refreshToken?: string; user: UserProfile }>('/auth/login', {
+      const res = await api.post<any>('/auth/login', {
         email,
         password,
       });
 
-      if (res && res.accessToken) {
-        await tokenStorage.setAccessToken(res.accessToken);
-        if (res.refreshToken) {
-          await tokenStorage.setRefreshToken(res.refreshToken);
+      const accessToken = res?.tokens?.accessToken || res?.accessToken;
+      const refreshToken = res?.tokens?.refreshToken || res?.refreshToken;
+
+      if (accessToken) {
+        await tokenStorage.setAccessToken(accessToken);
+        if (refreshToken) {
+          await tokenStorage.setRefreshToken(refreshToken);
         }
-        setToken(res.accessToken);
+        setToken(accessToken);
 
         // Fetch or assign full user profile
         if (res.user) {
@@ -137,19 +140,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const register = async (fullName: string, email: string, password: string): Promise<void> => {
     setIsLoading(true);
     try {
-      const res = await api.post<{ accessToken: string; refreshToken?: string; user: UserProfile }>('/auth/register', {
+      const res = await api.post<any>('/auth/register', {
         fullName,
         email,
         password,
       });
 
-      if (res && res.accessToken) {
-        await tokenStorage.setAccessToken(res.accessToken);
-        if (res.refreshToken) {
-          await tokenStorage.setRefreshToken(res.refreshToken);
+      const accessToken = res?.tokens?.accessToken || res?.accessToken;
+      const refreshToken = res?.tokens?.refreshToken || res?.refreshToken;
+
+      if (accessToken) {
+        await tokenStorage.setAccessToken(accessToken);
+        if (refreshToken) {
+          await tokenStorage.setRefreshToken(refreshToken);
         }
-        setToken(res.accessToken);
-        setUser(res.user || { email, fullName });
+        setToken(accessToken);
+        try {
+          const profile = await api.get<UserProfile>('/profiles/me');
+          setUser(profile);
+        } catch {
+          setUser({ ...(res.user || {}), email, fullName });
+        }
 
         // Register push notification token
         await pushNotificationService.registerDevicePushToken();

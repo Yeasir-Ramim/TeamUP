@@ -1,12 +1,19 @@
-import { IsNotEmpty, IsOptional, IsString, Matches } from 'class-validator';
+import { IsOptional, IsString, Matches } from 'class-validator';
 
 export class RegisterPushTokenDto {
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
   @Matches(/^(ExponentPushToken\[.+\]|[a-zA-Z0-9_-]+)$/, {
     message: 'token must be a valid Expo push token format',
   })
-  token: string;
+  token?: string;
+
+  @IsOptional()
+  @IsString()
+  @Matches(/^(ExponentPushToken\[.+\]|[a-zA-Z0-9_-]+)$/, {
+    message: 'pushToken must be a valid Expo push token format',
+  })
+  pushToken?: string;
 
   @IsOptional()
   @IsString()
@@ -14,7 +21,11 @@ export class RegisterPushTokenDto {
 }
 
 export class UnregisterPushTokenDto {
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
-  token: string;
+  token?: string;
+
+  @IsOptional()
+  @IsString()
+  pushToken?: string;
 }

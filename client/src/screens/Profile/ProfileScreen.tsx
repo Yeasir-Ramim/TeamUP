@@ -17,11 +17,11 @@ import { StateWrapper, ScreenState } from '../../components/StateWrapper';
 import { useAuth } from '../../context/AuthContext';
 import { ProfileEditScreen } from './ProfileEditScreen';
 import { GitHubStatsCard } from '../../components/GitHubStatsCard';
-import { ApiError } from '../../api/client';
+import { api, ApiError } from '../../api/client';
 
 export const ProfileScreen = () => {
   const { colors, typography, spacing, isDark, toggleTheme } = useTheme();
-  const { user, fetchProfile, logout } = useAuth();
+  const { user, fetchProfile, logout, updateUser } = useAuth();
 
   const [screenState, setScreenState] = useState<ScreenState>('loading');
   const [errorMessage, setErrorMessage] = useState<string>('');
@@ -54,6 +54,32 @@ export const ProfileScreen = () => {
 
     async function init() {
       try {
+        if (typeof window !== 'undefined' && window.location && window.location.search) {
+          const urlParams = new URLSearchParams(window.location.search);
+          const githubCode = urlParams.get('code');
+          if (githubCode) {
+            try {
+              const redirectUri = window.location.origin;
+              const res = await api.post<{ username: string; avatarUrl?: string }>(
+                '/github/link',
+                { code: githubCode, redirectUri }
+              );
+              if (res?.username) {
+                updateUser({
+                  githubUsername: res.username,
+                  ...(res.avatarUrl ? { avatarUrl: res.avatarUrl } : {}),
+                });
+              }
+            } catch (linkErr: any) {
+              console.warn('GitHub link error:', linkErr);
+              if (isMounted && linkErr?.message) {
+                setErrorMessage(linkErr.message);
+              }
+            } finally {
+              window.history.replaceState({}, document.title, window.location.pathname);
+            }
+          }
+        }
         await fetchProfile();
         if (isMounted) {
           setScreenState('populated');
@@ -99,8 +125,7 @@ export const ProfileScreen = () => {
   }
 
   // Check if profile details exist
-  const isProfileEmpty =
-    !user?.fullName && !user?.bio && (!user?.skills || user.skills.length === 0);
+  const isProfileEmpty = !user?.fullName && !user?.email;
 
   return (
     <ScrollView
@@ -131,7 +156,7 @@ export const ProfileScreen = () => {
                   ]}
                 >
                   <Text style={{ fontSize: 28 }}>
-                    {user.fullName ? user.fullName.charAt(0).toUpperCase() : '👤'}
+                    {user.fullName ? user.fullName.charAt(0).toUpperCase() : 'U'}
                   </Text>
                 </View>
                 <View style={{ flex: 1, marginLeft: 14 }}>
@@ -192,10 +217,10 @@ export const ProfileScreen = () => {
               {(user.department || user.semester) && (
                 <View style={[styles.infoRow, { marginTop: spacing.sm }]}>
                   {user.department && (
-                    <Chip label={`🎓 ${user.department}`} variant="secondary" />
+                    <Chip label={user.department} variant="secondary" />
                   )}
                   {user.semester && (
-                    <Chip label={`🗓️ ${user.semester}`} variant="secondary" />
+                    <Chip label={user.semester} variant="secondary" />
                   )}
                 </View>
               )}
@@ -239,7 +264,6 @@ export const ProfileScreen = () => {
             <GitHubStatsCard
               profileId={user.id || user.userId || 'me'}
               githubUsername={user.githubUsername}
-              onConnectPress={() => setIsEditing(true)}
             />
 
             {/* Links Bento Card */}
@@ -260,7 +284,6 @@ export const ProfileScreen = () => {
                       Linking.openURL(`https://github.com/${user.githubUsername}`)
                     }
                   >
-                    <Text style={{ fontSize: 18 }}>🐙</Text>
                     <Text
                       style={[
                         styles.linkText,
@@ -277,7 +300,6 @@ export const ProfileScreen = () => {
                     style={styles.linkRow}
                     onPress={() => Linking.openURL(user.portfolioUrl!)}
                   >
-                    <Text style={{ fontSize: 18 }}>🌐</Text>
                     <Text
                       style={[
                         styles.linkText,

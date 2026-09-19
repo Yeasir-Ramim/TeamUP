@@ -18,11 +18,16 @@ export class NotificationsService {
    * Register a mobile device push token (idempotent upsert)
    */
   async registerPushToken(userId: string, dto: RegisterPushTokenDto) {
+    const rawToken = dto.token || dto.pushToken;
+    if (!rawToken) {
+      return { registered: false, message: 'Push token is missing' };
+    }
+
     await this.prisma.pushToken.upsert({
-      where: { token: dto.token },
+      where: { token: rawToken },
       create: {
         userId,
-        token: dto.token,
+        token: rawToken,
         device: dto.device,
       },
       update: {

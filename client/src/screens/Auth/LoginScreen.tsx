@@ -100,7 +100,7 @@ export const LoginScreen = ({ navigation }: any) => {
                 ]}
               >
                 <Text style={[styles.errorText, { color: colors.onErrorContainer }]}>
-                  ⚠️ {errorMsg}
+                  {errorMsg}
                 </Text>
               </View>
             ) : null}

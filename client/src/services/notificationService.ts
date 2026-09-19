@@ -55,13 +55,21 @@ export const notificationService = {
    * Register push token with backend
    */
   registerPushToken: async (pushToken?: string): Promise<{ registered: boolean }> => {
-    return api.post<{ registered: boolean }>('/notifications/push-token', { pushToken });
+    if (!pushToken) return { registered: false };
+    return api.post<{ registered: boolean }>('/notifications/push-token', {
+      token: pushToken,
+      pushToken,
+      device: 'web',
+    });
   },
 
   /**
    * Deregister push token with backend
    */
-  deregisterPushToken: async (): Promise<{ registered: boolean }> => {
-    return api.post<{ registered: boolean }>('/notifications/push-token', { pushToken: '' });
+  deregisterPushToken: async (pushToken?: string): Promise<{ registered: boolean }> => {
+    if (!pushToken) return { registered: false };
+    return api.delete<{ registered: boolean }>('/notifications/push-token', {
+      token: pushToken,
+    });
   },
 };
