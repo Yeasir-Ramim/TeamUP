@@ -267,6 +267,44 @@ describe('NotificationsService', () => {
       });
     });
 
+    it('should dispatch push notifications to Expo and prune stale tokens on DeviceNotRegistered', async () => {
+      const originalFetch = global.fetch;
+      mockPrismaService.pushToken.findMany.mockResolvedValue([
+        { id: 'pt-1', token: 'ExponentPushToken[valid123]' },
+        { id: 'pt-2', token: 'ExponentPushToken[stale456]' },
+      ]);
+      mockPrismaService.pushToken.deleteMany.mockResolvedValue({ count: 1 });
+
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          data: [
+            { status: 'ok', id: 'ticket-1' },
+            {
+              status: 'error',
+              details: { error: 'DeviceNotRegistered' },
+            },
+          ],
+        }),
+      } as any);
+
+      await service.dispatchPushNotification('u-1', {
+        title: 'Meeting Alert',
+        body: 'Meeting starts in 10 mins',
+        type: 'MEETING_REMINDER',
+      });
+
+      expect(global.fetch).toHaveBeenCalledWith(
+        'https://exp.host/--/api/v2/push/send',
+        expect.objectContaining({ method: 'POST' }),
+      );
+      expect(mockPrismaService.pushToken.deleteMany).toHaveBeenCalledWith({
+        where: { token: 'ExponentPushToken[stale456]' },
+      });
+
+      global.fetch = originalFetch;
+    });
+
     it('should gracefully handle push dispatch errors without throwing', async () => {
       mockPrismaService.pushToken.findMany.mockRejectedValue(
         new Error('DB connection drop'),
