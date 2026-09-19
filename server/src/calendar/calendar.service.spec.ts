@@ -307,6 +307,31 @@ describe('CalendarService', () => {
       expect(feed).toEqual([]);
     });
 
+    it('should filter tasks and events by date range (startDate and endDate)', async () => {
+      mockPrismaService.projectMember.findMany.mockResolvedValue([
+        { projectId: 'proj-1' },
+      ]);
+      mockPrismaService.project.findMany.mockResolvedValue([]);
+      mockPrismaService.calendarEvent.findMany.mockResolvedValue([]);
+      mockPrismaService.task.findMany.mockResolvedValue([]);
+      mockPrismaService.meeting.findMany.mockResolvedValue([]);
+
+      await service.getUnifiedFeed('u-1', {
+        startDate: '2026-10-01T00:00:00.000Z',
+        endDate: '2026-10-31T23:59:59.000Z',
+      });
+
+      expect(mockPrismaService.task.findMany).toHaveBeenCalledWith({
+        where: expect.objectContaining({
+          dueDate: expect.objectContaining({
+            gte: expect.any(Date),
+            lte: expect.any(Date),
+          }),
+        }),
+        include: expect.any(Object),
+      });
+    });
+
     it('should throw ForbiddenException if querying specific project user is not a member of', async () => {
       mockPrismaService.projectMember.findMany.mockResolvedValue([
         { projectId: 'proj-1' },

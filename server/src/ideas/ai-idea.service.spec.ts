@@ -156,6 +156,205 @@ describe('AiIdeaService', () => {
     });
   });
 
+  describe('generateIdea - LLM API Call & Parsing', () => {
+    const originalFetch = global.fetch;
+
+    afterEach(() => {
+      global.fetch = originalFetch;
+    });
+
+    it('should call Gemini endpoint when API key is set and parse JSON response', async () => {
+      mockConfigService.get.mockImplementation((key: string) => {
+        if (key === 'LLM_API_KEY') return 'actual_valid_gemini_key';
+        if (key === 'LLM_MODEL') return 'gemini-3.6-flash';
+        return null;
+      });
+
+      const mockGeminiJson = {
+        title: 'Gemini Project',
+        description: 'Gemini generated project description',
+        problem: 'Specific student challenge',
+        domain: 'Robotics',
+        techStack: ['ROS 2', 'Python'],
+        difficulty: ExperienceLevel.ADVANCED,
+        estimatedDuration: '6-8 weeks',
+        teamSize: '4-5 members',
+        features: ['Autonomous navigation', 'LiDAR mapping'],
+        roadmap: ['Phase 1: Gazebo', 'Phase 2: Hardware'],
+      };
+
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          candidates: [
+            {
+              content: {
+                parts: [
+                  {
+                    text: `\`\`\`json\n${JSON.stringify(mockGeminiJson)}\n\`\`\``,
+                  },
+                ],
+              },
+            },
+          ],
+        }),
+      } as any);
+
+      mockPrismaService.cachedIdeaQuery.findUnique.mockResolvedValue(null);
+      mockPrismaService.cachedIdeaQuery.upsert.mockResolvedValue({});
+
+      const result = await service.generateIdea({
+        domain: 'Robotics',
+        techStack: ['ROS 2', 'Python'],
+        difficulty: ExperienceLevel.ADVANCED,
+      });
+
+      expect(result.title).toBe('Gemini Project');
+      expect(result.domain).toBe('Robotics');
+      expect(result.features).toContain('Autonomous navigation');
+      expect(result.isCached).toBe(false);
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('gemini-3.6-flash:generateContent'),
+        expect.objectContaining({ method: 'POST' }),
+      );
+    });
+
+    it('should call custom OpenAI-compatible endpoint when LLM_API_URL is configured', async () => {
+      mockConfigService.get.mockImplementation((key: string) => {
+        if (key === 'LLM_API_KEY') return 'sk-test-openai-key';
+        if (key === 'LLM_API_URL')
+          return 'https://api.openai.com/v1/chat/completions';
+        if (key === 'LLM_MODEL') return 'gpt-4o-mini';
+        return null;
+      });
+
+      const mockOpenAiJson = {
+        title: 'OpenAI Project',
+        description: 'OpenAI description',
+        domain: 'Education',
+        techStack: ['TypeScript'],
+        difficulty: ExperienceLevel.BEGINNER,
+        features: ['Quiz engine'],
+        roadmap: ['Phase 1'],
+      };
+
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          choices: [
+            {
+              message: {
+                content: JSON.stringify(mockOpenAiJson),
+              },
+            },
+          ],
+        }),
+      } as any);
+
+      mockPrismaService.cachedIdeaQuery.findUnique.mockResolvedValue(null);
+      mockPrismaService.cachedIdeaQuery.upsert.mockResolvedValue({});
+
+      const result = await service.generateIdea({
+        domain: 'Education',
+        techStack: ['TypeScript'],
+        difficulty: ExperienceLevel.BEGINNER,
+      });
+
+      expect(result.title).toBe('OpenAI Project');
+      expect(global.fetch).toHaveBeenCalledWith(
+        'https://api.openai.com/v1/chat/completions',
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            Authorization: 'Bearer sk-test-openai-key',
+          }),
+        }),
+      );
+    });
+
+    it('should throw ServiceUnavailableException when LLM response is not ok', async () => {
+      mockConfigService.get.mockImplementation((key: string) => {
+        if (key === 'LLM_API_KEY') return 'actual_key';
+        return null;
+      });
+
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: false,
+        status: 503,
+        text: async () => 'Service overloaded',
+      } as any);
+
+      mockPrismaService.cachedIdeaQuery.findUnique.mockResolvedValue(null);
+
+      await expect(service.generateIdea({ domain: 'Fintech' })).rejects.toThrow(
+        ServiceUnavailableException,
+      );
+    });
+
+    it('should throw ServiceUnavailableException when fetch throws a network error', async () => {
+      mockConfigService.get.mockImplementation((key: string) => {
+        if (key === 'LLM_API_KEY') return 'actual_key';
+        return null;
+      });
+
+      global.fetch = jest
+        .fn()
+        .mockRejectedValue(new Error('DNS resolution failed'));
+
+      mockPrismaService.cachedIdeaQuery.findUnique.mockResolvedValue(null);
+
+      await expect(service.generateIdea({ domain: 'Fintech' })).rejects.toThrow(
+        ServiceUnavailableException,
+      );
+    });
+  });
+
+  describe('generateProceduralFallback - Domain Variations', () => {
+    it('should generate Healthcare tailored project proposal', () => {
+      const idea = service.generateProceduralFallback(
+        'Healthcare',
+        ['Python', 'FastAPI'],
+        ExperienceLevel.ADVANCED,
+      );
+
+      expect(idea.title).toContain('Healthcare');
+      expect(idea.description).toContain('telehealth');
+      expect(idea.features).toEqual(
+        expect.arrayContaining([expect.stringContaining('telemetry')]),
+      );
+      expect(idea.estimatedDuration).toBe('6-8 weeks');
+      expect(idea.teamSize).toBe('4-5 members');
+    });
+
+    it('should generate Education tailored project proposal', () => {
+      const idea = service.generateProceduralFallback(
+        'Education',
+        ['React', 'Node.js'],
+        ExperienceLevel.BEGINNER,
+      );
+
+      expect(idea.title).toContain('Micro-Tutoring');
+      expect(idea.features).toEqual(
+        expect.arrayContaining([expect.stringContaining('matchmaking')]),
+      );
+      expect(idea.estimatedDuration).toBe('3-4 weeks');
+      expect(idea.teamSize).toBe('2-3 members');
+    });
+
+    it('should generate generic fallback for custom domains', () => {
+      const idea = service.generateProceduralFallback(
+        'Aerospace',
+        ['Rust', 'C++'],
+        ExperienceLevel.INTERMEDIATE,
+        'Rocket Trajectory',
+      );
+
+      expect(idea.title).toContain('Rocket Trajectory - Aerospace');
+      expect(idea.domain).toBe('Aerospace');
+      expect(idea.estimatedDuration).toBe('4-6 weeks');
+      expect(idea.teamSize).toBe('3-4 members');
+    });
+  });
+
   describe('cleanExpiredCache', () => {
     it('should delete expired records and return count', async () => {
       mockPrismaService.cachedIdeaQuery.deleteMany.mockResolvedValue({

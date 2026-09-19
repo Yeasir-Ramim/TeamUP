@@ -408,6 +408,84 @@ describe('MeetingsService', () => {
     });
   });
 
+  describe('manualFinalize', () => {
+    it('should allow project leader to manually finalize a meeting', async () => {
+      const meeting = {
+        id: 'meet-manual',
+        status: MeetingStatus.VOTING,
+        project: {
+          creatorId: 'leader-1',
+          members: [
+            {
+              userId: 'leader-1',
+              role: ProjectRole.LEADER,
+              status: MemberStatus.ACCEPTED,
+            },
+          ],
+        },
+        slots: [
+          {
+            id: 'slot-1',
+            startTime: new Date('2026-10-01T10:00:00Z'),
+            endTime: new Date('2026-10-01T11:00:00Z'),
+            votes: [],
+          },
+        ],
+      };
+
+      mockPrismaService.meeting.findUnique
+        .mockResolvedValueOnce(meeting) // in manualFinalize check
+        .mockResolvedValueOnce(meeting); // in finalizeMeeting
+
+      mockPrismaService.meeting.update.mockResolvedValue({
+        ...meeting,
+        status: MeetingStatus.CONFIRMED,
+        selectedSlotId: 'slot-1',
+      });
+      mockPrismaService.calendarEvent.create.mockResolvedValue({ id: 'cal-1' });
+
+      const result = await service.manualFinalize('leader-1', 'meet-manual', {
+        slotId: 'slot-1',
+      });
+
+      expect(result.status).toBe(MeetingStatus.CONFIRMED);
+      expect(result.selectedSlotId).toBe('slot-1');
+    });
+
+    it('should throw ForbiddenException if non-leader attempts manual finalization', async () => {
+      const meeting = {
+        id: 'meet-manual',
+        status: MeetingStatus.VOTING,
+        project: {
+          creatorId: 'leader-1',
+          members: [
+            {
+              userId: 'member-2',
+              role: ProjectRole.MEMBER,
+              status: MemberStatus.ACCEPTED,
+            },
+          ],
+        },
+      };
+
+      mockPrismaService.meeting.findUnique.mockResolvedValue(meeting);
+
+      await expect(
+        service.manualFinalize('member-2', 'meet-manual', {
+          slotId: 'slot-1',
+        }),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('should throw NotFoundException if meeting not found', async () => {
+      mockPrismaService.meeting.findUnique.mockResolvedValue(null);
+
+      await expect(
+        service.manualFinalize('leader-1', 'ghost-meet'),
+      ).rejects.toThrow(NotFoundException);
+    });
+  });
+
   describe('cancelMeeting', () => {
     it('should cancel meeting in VOTING status by project leader', async () => {
       const meeting = {
