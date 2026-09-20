@@ -36,7 +36,7 @@ export class CalendarController {
   /**
    * Create a new project calendar event (Meeting, Deadline, Milestone)
    */
-  @Post('projects/:projectId/calendar/events')
+  @Post(['projects/:projectId/calendar/events', 'projects/:projectId/calendar'])
   @HttpCode(HttpStatus.CREATED)
   async createEvent(
     @CurrentUser() user: AuthenticatedUser,
@@ -49,7 +49,7 @@ export class CalendarController {
   /**
    * Get calendar events for a specific project
    */
-  @Get('projects/:projectId/calendar/events')
+  @Get(['projects/:projectId/calendar/events', 'projects/:projectId/calendar'])
   async getProjectEvents(
     @CurrentUser() user: AuthenticatedUser,
     @Param('projectId') projectId: string,
