@@ -26,7 +26,7 @@ export const calendarService = {
    */
   getCalendarEvents: async (projectId: string): Promise<CalendarEvent[]> => {
     try {
-      const res = await api.get<CalendarEvent[]>(`/projects/${projectId}/calendar`);
+      const res = await api.get<CalendarEvent[]>(`/projects/${projectId}/calendar/events`);
       return res || [];
     } catch {
       return [];
@@ -37,7 +37,7 @@ export const calendarService = {
    * Create a new deadline or calendar event
    */
   createCalendarEvent: async (dto: CreateCalendarEventDto): Promise<CalendarEvent> => {
-    return api.post<CalendarEvent>(`/projects/${dto.projectId}/calendar`, {
+    return api.post<CalendarEvent>(`/projects/${dto.projectId}/calendar/events`, {
       title: dto.title,
       description: dto.description,
       eventType: dto.eventType,
