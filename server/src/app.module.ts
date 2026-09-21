@@ -15,6 +15,7 @@ import { NotificationsModule } from './notifications/notifications.module';
 import { MeetingsModule } from './meetings/meetings.module';
 import { CalendarModule } from './calendar/calendar.module';
 import { IdeasModule } from './ideas/ideas.module';
+import { ChatModule } from './chat/chat.module';
 
 @Module({
   imports: [
@@ -35,6 +36,7 @@ import { IdeasModule } from './ideas/ideas.module';
     MeetingsModule,
     CalendarModule,
     IdeasModule,
+    ChatModule,
   ],
   controllers: [AppController],
   providers: [AppService],
