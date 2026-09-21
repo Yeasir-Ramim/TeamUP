@@ -18,6 +18,7 @@ import { IdeasModule } from './ideas/ideas.module';
 import { ChatModule } from './chat/chat.module';
 import { FilesModule } from './files/files.module';
 import { EvaluationsModule } from './evaluations/evaluations.module';
+import { AnalyticsModule } from './analytics/analytics.module';
 
 @Module({
   imports: [
@@ -41,6 +42,7 @@ import { EvaluationsModule } from './evaluations/evaluations.module';
     ChatModule,
     FilesModule,
     EvaluationsModule,
+    AnalyticsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
