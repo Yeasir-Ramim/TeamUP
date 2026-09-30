@@ -110,7 +110,7 @@ export const Card: React.FC<CardProps> = ({
   return (
     <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
       <Pressable
-        accessibilityRole="button"
+        accessibilityRole={Platform.OS === 'web' ? undefined : 'button'}
         hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
         onPressIn={handlePressIn}
         onPressOut={handlePressOut}
