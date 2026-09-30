@@ -148,7 +148,6 @@ export const MarketplaceScreen: React.FC<MarketplaceScreenProps> = ({ navigation
             marginBottom: spacing.base,
           },
         ]}
-        onPress={() => navigation?.navigate('ProjectDetail', { projectId: item.id })}
       >
         <View style={styles.featuredHeaderRow}>
           <View
@@ -538,7 +537,7 @@ export const MarketplaceScreen: React.FC<MarketplaceScreenProps> = ({ navigation
 
       {/* Main Content Area */}
       <View style={styles.body}>
-        <View style={styles.centerContainer}>
+        <View style={styles.bodyCenterContainer}>
           <StateWrapper
             state={screenState}
             errorMessage={errorMessage}
@@ -552,6 +551,7 @@ export const MarketplaceScreen: React.FC<MarketplaceScreenProps> = ({ navigation
             onEmptyAction={() => navigation?.navigate('CreateProject')}
           >
             <FlatList
+              style={{ flex: 1 }}
               key={isWide ? 'bento-grid-2' : 'bento-list-1'}
               data={displayProjects}
               numColumns={isWide ? 2 : 1}
@@ -559,10 +559,11 @@ export const MarketplaceScreen: React.FC<MarketplaceScreenProps> = ({ navigation
               keyExtractor={(item) => item.id}
               renderItem={renderProjectItem}
               ListHeaderComponent={renderListHeader}
+              showsVerticalScrollIndicator={false}
               contentContainerStyle={{
                 paddingHorizontal: spacing.screenPadding,
                 paddingTop: spacing.md,
-                paddingBottom: 100,
+                paddingBottom: 110,
               }}
               refreshControl={
                 <RefreshControl
@@ -631,6 +632,15 @@ const styles = StyleSheet.create({
   },
   body: {
     flex: 1,
+    height: '100%',
+  },
+  bodyCenterContainer: {
+    width: '100%',
+    maxWidth: 960,
+    alignSelf: 'center',
+    paddingHorizontal: 16,
+    flex: 1,
+    height: '100%',
   },
   listHeaderContainer: {
     width: '100%',
