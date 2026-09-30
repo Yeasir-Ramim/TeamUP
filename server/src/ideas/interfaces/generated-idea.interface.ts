@@ -7,6 +7,7 @@ export interface GeneratedIdea {
   problem: string;
   domain: string;
   techStack: string[];
+  stack?: string[];
   difficulty: ExperienceLevel;
   estimatedDuration: string;
   teamSize: string;
