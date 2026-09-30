@@ -19,6 +19,12 @@ import type { AuthenticatedUser } from './interfaces/jwt-payload.interface';
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
+  @HttpCode(HttpStatus.OK)
+  @Post('github')
+  async loginWithGithub(@Body() dto: { code: string; redirectUri?: string }) {
+    return this.authService.loginWithGithub(dto.code, dto.redirectUri);
+  }
+
   @Post('register')
   async register(@Body() dto: RegisterDto) {
     return this.authService.register(dto);
