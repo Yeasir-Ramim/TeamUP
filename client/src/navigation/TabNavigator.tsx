@@ -2,6 +2,8 @@ import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { View, StyleSheet, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { BlurView } from 'expo-blur';
+import * as Haptics from 'expo-haptics';
 import { FolderKanban, Users, Plus, Lightbulb, Menu } from 'lucide-react-native';
 import { useTheme } from '../theme/ThemeContext';
 
@@ -27,34 +29,55 @@ export const TabNavigator = () => {
 
   return (
     <Tab.Navigator
+      screenListeners={{
+        tabPress: () => {
+          if (Platform.OS !== 'web') {
+            try {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            } catch {
+              // ignore haptic error
+            }
+          }
+        },
+      }}
       screenOptions={{
         headerShown: false,
+        tabBarBackground: () => (
+          <BlurView
+            tint={isDark ? 'systemUltraThinMaterialDark' : 'systemUltraThinMaterialLight'}
+            intensity={90}
+            style={[
+              StyleSheet.absoluteFill,
+              {
+                backgroundColor: isDark
+                  ? 'rgba(9, 9, 11, 0.78)'
+                  : 'rgba(255, 255, 255, 0.82)',
+                ...Platform.select({
+                  web: {
+                    backdropFilter: 'blur(20px)',
+                    WebkitBackdropFilter: 'blur(20px)',
+                  },
+                }),
+              },
+            ]}
+          />
+        ),
         tabBarStyle: {
-          backgroundColor: isDark ? '#09090B' : '#FFFFFF',
+          position: 'absolute',
+          bottom: 0,
+          left: 0,
+          right: 0,
+          backgroundColor: 'transparent',
           borderTopColor: colors.border,
           borderTopWidth: 1,
           height: 56 + Math.max(insets.bottom, 6),
           paddingBottom: Math.max(insets.bottom, 6),
           paddingTop: 6,
           paddingHorizontal: 8,
-          ...Platform.select({
-            web: {
-              borderTopWidth: 1,
-              boxShadow: isDark
-                ? '0 -1px 0 0 rgba(255, 255, 255, 0.08)'
-                : '0 -1px 0 0 rgba(0, 0, 0, 0.08)',
-            },
-            default: {
-              elevation: 4,
-              shadowColor: '#000000',
-              shadowOffset: { width: 0, height: -1 },
-              shadowOpacity: isDark ? 0.3 : 0.05,
-              shadowRadius: 4,
-            },
-          }),
+          elevation: 0,
         },
         tabBarActiveBackgroundColor: isDark
-          ? 'rgba(255, 255, 255, 0.06)'
+          ? 'rgba(255, 255, 255, 0.08)'
           : 'rgba(0, 0, 0, 0.04)',
         tabBarItemStyle: {
           borderRadius: 8,

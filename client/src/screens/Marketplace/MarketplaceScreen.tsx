@@ -7,6 +7,7 @@ import {
   RefreshControl,
   TouchableOpacity,
   ScrollView,
+  Platform,
 } from 'react-native';
 import { Bell, Plus, Rocket } from 'lucide-react-native';
 import { useSafeInsets } from '../../utils/useSafeInsets';
@@ -16,6 +17,7 @@ import { Badge } from '../../components/Badge';
 import { Chip } from '../../components/Chip';
 import { Button } from '../../components/Button';
 import { SearchBar } from '../../components/SearchBar';
+import { SegmentedControl } from '../../components/SegmentedControl';
 import { StateWrapper, ScreenState } from '../../components/StateWrapper';
 import { projectService, Project } from '../../services/projectService';
 import { useAuth } from '../../context/AuthContext';
@@ -27,7 +29,7 @@ export interface MarketplaceScreenProps {
 const DOMAIN_FILTERS = ['All', 'Web', 'Mobile', 'AI', 'Design'];
 
 export const MarketplaceScreen: React.FC<MarketplaceScreenProps> = ({ navigation }) => {
-  const { colors, typography, spacing, borderRadius } = useTheme();
+  const { colors, typography, spacing, borderRadius, isDark } = useTheme();
   const insets = useSafeInsets();
   const { user } = useAuth();
 
@@ -229,8 +231,16 @@ export const MarketplaceScreen: React.FC<MarketplaceScreenProps> = ({ navigation
           styles.header,
           {
             paddingTop: insets.top + spacing.sm,
-            backgroundColor: colors.surface,
+            backgroundColor: isDark
+              ? 'rgba(9, 9, 11, 0.82)'
+              : 'rgba(255, 255, 255, 0.85)',
             borderBottomColor: colors.border,
+            ...Platform.select({
+              web: {
+                backdropFilter: 'blur(20px)',
+                WebkitBackdropFilter: 'blur(20px)',
+              },
+            }),
           },
         ]}
       >
@@ -302,22 +312,14 @@ export const MarketplaceScreen: React.FC<MarketplaceScreenProps> = ({ navigation
             />
           </View>
 
-          {/* Horizontal Domain Filter Chips */}
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={[styles.filtersScroll, { paddingVertical: spacing.sm }]}
-          >
-            {DOMAIN_FILTERS.map((domain) => (
-              <Chip
-                key={domain}
-                label={domain}
-                selected={selectedDomain === domain}
-                onPress={() => handleSelectDomain(domain)}
-                style={{ marginRight: spacing.xs }}
-              />
-            ))}
-          </ScrollView>
+          {/* Animated Segmented Control for Domain Filters */}
+          <View style={{ marginTop: spacing.md, marginBottom: spacing.xs }}>
+            <SegmentedControl
+              options={DOMAIN_FILTERS}
+              selectedOption={selectedDomain}
+              onSelectOption={handleSelectDomain}
+            />
+          </View>
         </View>
       </View>
 
