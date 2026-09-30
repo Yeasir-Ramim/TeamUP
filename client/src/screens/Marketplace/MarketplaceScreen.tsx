@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   ScrollView,
 } from 'react-native';
+import { Bell, Plus, Rocket } from 'lucide-react-native';
 import { useSafeInsets } from '../../utils/useSafeInsets';
 import { useTheme } from '../../theme/ThemeContext';
 import { Card } from '../../components/Card';
@@ -40,9 +41,9 @@ export const MarketplaceScreen: React.FC<MarketplaceScreenProps> = ({ navigation
   const greeting = useMemo(() => {
     const hour = new Date().getHours();
     const name = user?.fullName ? user.fullName.split(' ')[0] : 'there';
-    if (hour < 12) return `Good morning, ${name} 👋`;
-    if (hour < 18) return `Good afternoon, ${name} 👋`;
-    return `Good evening, ${name} 👋`;
+    if (hour < 12) return `Good morning, ${name}`;
+    if (hour < 18) return `Good afternoon, ${name}`;
+    return `Good evening, ${name}`;
   }, [user]);
 
   const fetchProjects = useCallback((search?: string, domain?: string) => {
@@ -120,6 +121,9 @@ export const MarketplaceScreen: React.FC<MarketplaceScreenProps> = ({ navigation
     const isCreator = user?.id === item.creatorId;
     const isMember = item.members?.some((m) => m.userId === user?.id && m.status === 'ACCEPTED');
     const memberCount = item._count?.members ?? (item.members?.length || 1);
+    const validSkills = (item.requiredSkills || []).filter(
+      (req) => (req.skill?.name || req.skillName)?.trim()
+    );
 
     return (
       <Card
@@ -132,17 +136,22 @@ export const MarketplaceScreen: React.FC<MarketplaceScreenProps> = ({ navigation
               <View
                 style={[
                   styles.projectIconBadge,
-                  { backgroundColor: colors.primarySoft, borderRadius: borderRadius.sm },
+                  {
+                    backgroundColor: colors.surfaceMuted,
+                    borderColor: colors.border,
+                    borderWidth: 1,
+                    borderRadius: borderRadius.md,
+                  },
                 ]}
               >
-                <Text style={{ fontSize: 16 }}>🚀</Text>
+                <Rocket size={18} color={colors.primary} />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={[typography.h3, { color: colors.text }]} numberOfLines={1}>
                   {item.title}
                 </Text>
                 <Text
-                  style={[typography.bodySmall, { color: colors.textMuted, marginTop: 2 }]}
+                  style={[typography.bodySmall, { color: colors.textMuted, marginTop: 3 }]}
                   numberOfLines={2}
                 >
                   {item.description}
@@ -156,30 +165,30 @@ export const MarketplaceScreen: React.FC<MarketplaceScreenProps> = ({ navigation
           />
         </View>
 
-        <View style={[styles.metaRow, { marginTop: spacing.sm }]}>
+        <View style={[styles.metaRow, { marginTop: spacing.md }]}>
           <Chip label={item.domain} style={{ marginRight: spacing.xs }} />
           {item.semester ? <Chip label={item.semester} style={{ marginRight: spacing.xs }} /> : null}
           <Badge
             label={`${memberCount}/${item.maxMembers || 4} Members`}
-            variant="tertiary"
+            variant="secondary"
           />
         </View>
 
-        {item.requiredSkills && item.requiredSkills.length > 0 && (
+        {validSkills.length > 0 && (
           <View style={[styles.skillsRow, { marginTop: spacing.xs }]}>
-            {item.requiredSkills.slice(0, 3).map((req, idx) => {
-              const skillName = req.skill?.name || req.skillName || 'Skill';
+            {validSkills.slice(0, 4).map((req, idx) => {
+              const skillName = req.skill?.name || req.skillName;
               return (
                 <Chip
                   key={req.id || idx.toString()}
-                  label={skillName}
+                  label={skillName!}
                   style={{ marginRight: spacing.xs, marginBottom: spacing.xs }}
                 />
               );
             })}
-            {item.requiredSkills.length > 3 && (
+            {validSkills.length > 4 && (
               <Chip
-                label={`+${item.requiredSkills.length - 3} more`}
+                label={`+${validSkills.length - 4} more`}
                 style={{ marginBottom: spacing.xs }}
               />
             )}
@@ -191,6 +200,7 @@ export const MarketplaceScreen: React.FC<MarketplaceScreenProps> = ({ navigation
             <Button
               title="Open Workspace"
               variant="secondary"
+              size="sm"
               onPress={() =>
                 navigation?.navigate('Workspace', {
                   projectId: item.id,
@@ -202,6 +212,7 @@ export const MarketplaceScreen: React.FC<MarketplaceScreenProps> = ({ navigation
             <Button
               title="View Details"
               variant="outline"
+              size="sm"
               onPress={() => navigation?.navigate('ProjectDetail', { projectId: item.id })}
             />
           )}
@@ -218,113 +229,128 @@ export const MarketplaceScreen: React.FC<MarketplaceScreenProps> = ({ navigation
           styles.header,
           {
             paddingTop: insets.top + spacing.sm,
-            paddingHorizontal: spacing.screenPadding,
             backgroundColor: colors.surface,
             borderBottomColor: colors.border,
           },
         ]}
       >
-        <View style={styles.headerTop}>
-          <View>
-            <Text
-              style={[
-                styles.greetingText,
-                { color: colors.text, fontSize: typography.h2.fontSize, fontWeight: '700' },
-              ]}
-            >
-              {greeting}
-            </Text>
-            <Text style={[typography.bodySmall, { color: colors.textMuted, marginTop: 2 }]}>
-              Find something worth building.
-            </Text>
+        <View style={styles.centerContainer}>
+          <View style={styles.headerTop}>
+            <View>
+              <Text
+                style={[
+                  styles.greetingText,
+                  { color: colors.text, fontSize: typography.h2.fontSize, fontWeight: '700' },
+                ]}
+              >
+                {greeting}
+              </Text>
+              <Text style={[typography.bodySmall, { color: colors.textMuted, marginTop: 2 }]}>
+                Find something worth building.
+              </Text>
+            </View>
+
+            <View style={styles.headerActions}>
+              <TouchableOpacity
+                accessibilityRole="button"
+                accessibilityLabel="Notifications"
+                onPress={() => navigation?.navigate('Notifications')}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                style={[
+                  styles.actionBtn,
+                  {
+                    backgroundColor: colors.surfaceMuted,
+                    borderColor: colors.border,
+                    borderWidth: 1,
+                    borderRadius: borderRadius.md,
+                  },
+                ]}
+              >
+                <Bell size={18} color={colors.text} />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                accessibilityRole="button"
+                accessibilityLabel="Create Project"
+                onPress={() => navigation?.navigate('CreateProject')}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                style={[
+                  styles.createBtn,
+                  {
+                    backgroundColor: colors.primary,
+                    borderRadius: borderRadius.md,
+                  },
+                ]}
+              >
+                <Plus size={15} color={colors.onPrimary} style={{ marginRight: 4 }} />
+                <Text style={[styles.createBtnText, { color: colors.onPrimary }]}>Create</Text>
+              </TouchableOpacity>
+            </View>
           </View>
 
-          <View style={styles.headerActions}>
-            <TouchableOpacity
-              accessibilityRole="button"
-              accessibilityLabel="Notifications"
-              onPress={() => navigation?.navigate('Notifications')}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              style={[styles.actionBtn, { backgroundColor: colors.surfaceMuted }]}
-            >
-              <Text style={{ fontSize: 18 }}>🔔</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              accessibilityRole="button"
-              accessibilityLabel="Create Project"
-              onPress={() => navigation?.navigate('CreateProject')}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              style={[
-                styles.createBtn,
-                { backgroundColor: colors.primary, borderRadius: borderRadius.pill },
-              ]}
-            >
-              <Text style={styles.createBtnText}>+ Create</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* Global Search Bar */}
-        <View style={{ marginTop: spacing.md }}>
-          <SearchBar
-            value={searchQuery}
-            onChangeText={handleSearch}
-            onSubmitEditing={executeSearch}
-            onClear={() => {
-              setSearchQuery('');
-              fetchProjects('', selectedDomain);
-            }}
-            placeholder="Search projects by title, domain, tech..."
-          />
-        </View>
-
-        {/* Horizontal Domain Filter Chips */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={[styles.filtersScroll, { paddingVertical: spacing.sm }]}
-        >
-          {DOMAIN_FILTERS.map((domain) => (
-            <Chip
-              key={domain}
-              label={domain}
-              selected={selectedDomain === domain}
-              onPress={() => handleSelectDomain(domain)}
-              style={{ marginRight: spacing.xs }}
+          {/* Global Search Bar */}
+          <View style={{ marginTop: spacing.md }}>
+            <SearchBar
+              value={searchQuery}
+              onChangeText={handleSearch}
+              onSubmitEditing={executeSearch}
+              onClear={() => {
+                setSearchQuery('');
+                fetchProjects('', selectedDomain);
+              }}
+              placeholder="Search projects by title, domain, tech..."
             />
-          ))}
-        </ScrollView>
+          </View>
+
+          {/* Horizontal Domain Filter Chips */}
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={[styles.filtersScroll, { paddingVertical: spacing.sm }]}
+          >
+            {DOMAIN_FILTERS.map((domain) => (
+              <Chip
+                key={domain}
+                label={domain}
+                selected={selectedDomain === domain}
+                onPress={() => handleSelectDomain(domain)}
+                style={{ marginRight: spacing.xs }}
+              />
+            ))}
+          </ScrollView>
+        </View>
       </View>
 
       {/* Main Content Area */}
       <View style={styles.body}>
-        <StateWrapper
-          state={screenState}
-          errorMessage={errorMessage}
-          onRetry={() => {
-            setScreenState('loading');
-            fetchProjects(searchQuery, selectedDomain);
-          }}
-          emptyTitle="No Projects Found"
-          emptySubtitle="Be the first to create an exciting new project listing!"
-          emptyActionLabel="Create Project"
-          onEmptyAction={() => navigation?.navigate('CreateProject')}
-        >
-          <FlatList
-            data={projects}
-            keyExtractor={(item) => item.id}
-            renderItem={renderProjectItem}
-            contentContainerStyle={{ padding: spacing.screenPadding, paddingBottom: 90 }}
-            refreshControl={
-              <RefreshControl
-                refreshing={refreshing}
-                onRefresh={onRefresh}
-                tintColor={colors.primary}
-              />
-            }
-          />
-        </StateWrapper>
+        <View style={styles.centerContainer}>
+          <StateWrapper
+            state={screenState}
+            errorMessage={errorMessage}
+            onRetry={() => {
+              setScreenState('loading');
+              fetchProjects(searchQuery, selectedDomain);
+            }}
+            emptyTitle="No Projects Found"
+            emptySubtitle="Be the first to create an exciting new project listing!"
+            emptyActionLabel="Create Project"
+            onEmptyAction={() => navigation?.navigate('CreateProject')}
+          >
+            <FlatList
+              data={projects}
+              keyExtractor={(item) => item.id}
+              renderItem={renderProjectItem}
+              contentContainerStyle={{ paddingHorizontal: spacing.screenPadding, paddingTop: spacing.md, paddingBottom: 90 }}
+              refreshControl={
+                <RefreshControl
+                  refreshing={refreshing}
+                  onRefresh={onRefresh}
+                  tintColor={colors.primary}
+                />
+              }
+            />
+          </StateWrapper>
+        </View>
       </View>
     </View>
   );
@@ -337,6 +363,12 @@ const styles = StyleSheet.create({
   header: {
     borderBottomWidth: 1,
     paddingBottom: 4,
+  },
+  centerContainer: {
+    width: '100%',
+    maxWidth: 960,
+    alignSelf: 'center',
+    paddingHorizontal: 16,
   },
   headerTop: {
     flexDirection: 'row',
@@ -351,23 +383,23 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   actionBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 38,
+    height: 38,
+    borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 8,
   },
   createBtn: {
-    paddingHorizontal: 14,
-    paddingVertical: 9,
-    minHeight: 40,
-    justifyContent: 'center',
+    flexDirection: 'row',
     alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    minHeight: 38,
+    justifyContent: 'center',
   },
   createBtnText: {
-    color: '#FFFFFF',
-    fontWeight: '700',
+    fontWeight: '600',
     fontSize: 13,
   },
   filtersScroll: {

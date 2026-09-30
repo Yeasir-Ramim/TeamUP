@@ -20,27 +20,42 @@ export const Badge: React.FC<BadgeProps> = ({
   const getBackgroundColor = () => {
     switch (variant) {
       case 'secondary':
-        return colors.secondarySoft;
+        return colors.surfaceMuted;
       case 'tertiary':
       case 'accent':
-        return colors.tertiaryContainer;
+        return colors.surfaceMuted;
       case 'warning':
-        return '#FEF3C7';
+        return '#78350F';
       case 'error':
         return colors.errorContainer;
       case 'primary':
       default:
-        return colors.primarySoft;
+        return colors.primary;
     }
   };
 
   const getTextColor = () => {
     switch (variant) {
       case 'secondary':
-        return colors.secondary;
       case 'tertiary':
       case 'accent':
-        return colors.accent;
+        return colors.text;
+      case 'warning':
+        return '#FDE68A';
+      case 'error':
+        return colors.onErrorContainer;
+      case 'primary':
+      default:
+        return colors.onPrimary;
+    }
+  };
+
+  const getBorderColor = () => {
+    switch (variant) {
+      case 'secondary':
+      case 'tertiary':
+      case 'accent':
+        return colors.border;
       case 'warning':
         return '#B45309';
       case 'error':
@@ -60,9 +75,11 @@ export const Badge: React.FC<BadgeProps> = ({
         styles.badge,
         {
           backgroundColor: getBackgroundColor(),
-          borderRadius: borderRadius.pill,
+          borderColor: getBorderColor(),
+          borderWidth: 1,
+          borderRadius: borderRadius.md,
           paddingHorizontal: spacing.sm + 2,
-          paddingVertical: spacing.xs,
+          paddingVertical: 3,
         },
         style,
       ]}
@@ -73,7 +90,8 @@ export const Badge: React.FC<BadgeProps> = ({
           {
             color: getTextColor(),
             fontSize: typography.label.fontSize,
-            fontWeight: typography.label.fontWeight,
+            fontWeight: '600',
+            letterSpacing: 0.2,
           },
           textStyle,
         ]}

@@ -4,10 +4,10 @@ import {
   TextInput,
   StyleSheet,
   TouchableOpacity,
-  Text,
   StyleProp,
   ViewStyle,
 } from 'react-native';
+import { Search, X, SlidersHorizontal } from 'lucide-react-native';
 import { useTheme } from '../theme/ThemeContext';
 
 export interface SearchBarProps {
@@ -48,7 +48,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({
         style,
       ]}
     >
-      <Text style={[styles.searchIcon, { color: colors.textMuted }]}>🔍</Text>
+      <Search size={16} color={colors.textMuted} style={styles.searchIcon} />
 
       <TextInput
         testID={testID}
@@ -81,7 +81,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({
           }}
           style={styles.clearBtn}
         >
-          <Text style={[styles.clearText, { color: colors.textMuted }]}>✕</Text>
+          <X size={14} color={colors.textMuted} />
         </TouchableOpacity>
       )}
 
@@ -93,7 +93,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({
           onPress={onFilterPress}
           style={[styles.filterBtn, { borderLeftColor: colors.border }]}
         >
-          <Text style={{ fontSize: 16 }}>⚙️</Text>
+          <SlidersHorizontal size={15} color={colors.textMuted} />
         </TouchableOpacity>
       )}
     </View>
