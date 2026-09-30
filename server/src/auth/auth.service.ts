@@ -2,6 +2,7 @@ import {
   Injectable,
   UnauthorizedException,
   ConflictException,
+  BadRequestException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
@@ -21,6 +22,123 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
   ) {}
+
+  async loginWithGithub(code: string, redirectUri?: string): Promise<AuthResponse> {
+    const clientId = this.configService.get<string>('GITHUB_CLIENT_ID');
+    const clientSecret = this.configService.get<string>('GITHUB_CLIENT_SECRET');
+
+    if (!clientId || !clientSecret) {
+      throw new BadRequestException('GitHub OAuth is not configured');
+    }
+
+    // 1. Exchange code for access token
+    let tokenRes: Response;
+    try {
+      const payload: Record<string, string> = {
+        client_id: clientId,
+        client_secret: clientSecret,
+        code,
+      };
+      if (redirectUri) {
+        payload.redirect_uri = redirectUri;
+      }
+
+      tokenRes = await fetch('https://github.com/login/oauth/access_token', {
+        method: 'POST',
+        headers: {
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+          'User-Agent': 'TeamUp-Backend/1.0',
+        },
+        body: JSON.stringify(payload),
+      });
+    } catch (err: unknown) {
+      throw new BadRequestException('Unable to communicate with GitHub OAuth service');
+    }
+
+    const tokenData = await tokenRes.json();
+    if (tokenData.error || !tokenData.access_token) {
+      throw new BadRequestException(tokenData.error_description || 'Invalid or expired GitHub authorization code');
+    }
+
+    const accessToken = tokenData.access_token;
+
+    // 2. Fetch authenticated GitHub user details
+    let userRes: Response;
+    try {
+      userRes = await fetch('https://api.github.com/user', {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'User-Agent': 'TeamUp-Backend/1.0',
+          Accept: 'application/vnd.github.v3+json',
+        },
+      });
+    } catch (err: unknown) {
+      throw new BadRequestException('Unable to fetch GitHub user details');
+    }
+
+    if (!userRes.ok) {
+      throw new BadRequestException('Failed to retrieve GitHub profile');
+    }
+
+    const ghUser = await userRes.json();
+    const githubUsername = ghUser.login;
+    const avatarUrl = ghUser.avatar_url;
+    // GitHub API might not return email if it's private, fallback to a local generated email
+    const email = ghUser.email || `${githubUsername}@github.local`; 
+
+    // 3. Find or create user
+    let user = await this.prisma.user.findFirst({
+      where: {
+        OR: [
+          { email: email.toLowerCase() },
+          { profile: { githubUsername: githubUsername } }
+        ]
+      },
+      include: { profile: true }
+    });
+
+    if (!user) {
+      // Create a new user
+      const dummyPassword = await bcrypt.hash(crypto.randomBytes(16).toString('hex'), 10);
+      user = await this.prisma.user.create({
+        data: {
+          email: email.toLowerCase(),
+          password: dummyPassword,
+          profile: {
+            create: {
+              fullName: githubUsername,
+              githubUsername: githubUsername,
+              avatarUrl: avatarUrl,
+            }
+          }
+        },
+        include: { profile: true }
+      });
+    } else {
+      // Update existing user with github username if missing
+      if (!user.profile?.githubUsername) {
+        await this.prisma.profile.update({
+          where: { userId: user.id },
+          data: {
+            githubUsername,
+            ...(avatarUrl && !user.profile?.avatarUrl ? { avatarUrl } : {}),
+          }
+        });
+      }
+    }
+
+    const tokens = await this.generateTokens(user.id, user.email, user.role);
+
+    return {
+      tokens,
+      user: {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+      },
+    };
+  }
 
   private hashToken(token: string): string {
     return crypto.createHash('sha256').update(token).digest('hex');

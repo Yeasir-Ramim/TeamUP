@@ -32,6 +32,7 @@ interface AuthContextType {
   isLoading: boolean;
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<void>;
+  loginWithGithub: (code: string) => Promise<void>;
   register: (fullName: string, email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   updateUser: (updatedUser: Partial<UserProfile>) => void;
@@ -64,13 +65,43 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     async function loadAuth() {
       try {
-        const storedToken = await tokenStorage.getAccessToken();
+        let storedToken = await tokenStorage.getAccessToken();
+
+        // Check if there is a GitHub OAuth code in the URL
+        if (typeof window !== 'undefined' && window.location.search) {
+          const params = new URLSearchParams(window.location.search);
+          const code = params.get('code');
+          if (code) {
+            try {
+              const res = await api.post<any>('/auth/github', { code });
+              const accessToken = res?.tokens?.accessToken || res?.accessToken;
+              const refreshToken = res?.tokens?.refreshToken || res?.refreshToken;
+
+              if (accessToken) {
+                await tokenStorage.setAccessToken(accessToken);
+                if (refreshToken) {
+                  await tokenStorage.setRefreshToken(refreshToken);
+                }
+                storedToken = accessToken;
+                // Clear the URL param
+                window.history.replaceState({}, document.title, window.location.pathname);
+              }
+            } catch (err) {
+              console.error('GitHub login failed:', err);
+              // Clear the URL param on error too
+              window.history.replaceState({}, document.title, window.location.pathname);
+            }
+          }
+        }
+
         if (storedToken && isMounted) {
           setToken(storedToken);
           try {
             const profileData = await api.get<UserProfile>('/profiles/me');
             if (isMounted) {
               setUser(profileData);
+              // Register push notification token if not already done
+              await pushNotificationService.registerDevicePushToken().catch(console.warn);
             }
           } catch {
             await tokenStorage.clearAll();
@@ -137,6 +168,38 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const loginWithGithub = async (code: string): Promise<void> => {
+    setIsLoading(true);
+    try {
+      const res = await api.post<any>('/auth/github', { code });
+      const accessToken = res?.tokens?.accessToken || res?.accessToken;
+      const refreshToken = res?.tokens?.refreshToken || res?.refreshToken;
+
+      if (accessToken) {
+        await tokenStorage.setAccessToken(accessToken);
+        if (refreshToken) {
+          await tokenStorage.setRefreshToken(refreshToken);
+        }
+        setToken(accessToken);
+
+        if (res.user) {
+          setUser(res.user);
+        } else {
+          try {
+            const profile = await api.get<UserProfile>('/profiles/me');
+            setUser(profile);
+          } catch {
+            setUser({ email: '', fullName: 'GitHub User' });
+          }
+        }
+
+        await pushNotificationService.registerDevicePushToken();
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const register = async (fullName: string, email: string, password: string): Promise<void> => {
     setIsLoading(true);
     try {
@@ -194,6 +257,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isLoading,
         isAuthenticated: !!token,
         login,
+        loginWithGithub,
         register,
         logout,
         updateUser,
@@ -214,6 +278,7 @@ export const useAuth = (): AuthContextType => {
       isLoading: false,
       isAuthenticated: false,
       login: async () => {},
+      loginWithGithub: async () => {},
       register: async () => {},
       logout: async () => {},
       updateUser: () => {},
