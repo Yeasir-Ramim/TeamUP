@@ -1,7 +1,8 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Text, View, StyleSheet, Platform } from 'react-native';
+import { View, StyleSheet, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { FolderKanban, Users, Plus, Lightbulb, Menu } from 'lucide-react-native';
 import { useTheme } from '../theme/ThemeContext';
 
 import { MarketplaceScreen } from '../screens/Marketplace/MarketplaceScreen';
@@ -29,46 +30,44 @@ export const TabNavigator = () => {
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: isDark
-            ? 'rgba(15, 23, 42, 0.85)'
-            : 'rgba(255, 255, 255, 0.88)',
-          borderTopColor: isDark
-            ? 'rgba(255, 255, 255, 0.08)'
-            : 'rgba(0, 0, 0, 0.06)',
+          backgroundColor: isDark ? '#09090B' : '#FFFFFF',
+          borderTopColor: colors.border,
           borderTopWidth: 1,
-          height: 60 + Math.max(insets.bottom, 6),
+          height: 56 + Math.max(insets.bottom, 6),
           paddingBottom: Math.max(insets.bottom, 6),
-          paddingTop: 4,
-          paddingHorizontal: 4,
+          paddingTop: 6,
+          paddingHorizontal: 8,
           ...Platform.select({
             web: {
-              backdropFilter: 'blur(20px)',
-              WebkitBackdropFilter: 'blur(20px)',
+              borderTopWidth: 1,
+              boxShadow: isDark
+                ? '0 -1px 0 0 rgba(255, 255, 255, 0.08)'
+                : '0 -1px 0 0 rgba(0, 0, 0, 0.08)',
             },
             default: {
-              elevation: 8,
+              elevation: 4,
               shadowColor: '#000000',
-              shadowOffset: { width: 0, height: -2 },
-              shadowOpacity: isDark ? 0.35 : 0.08,
-              shadowRadius: 8,
+              shadowOffset: { width: 0, height: -1 },
+              shadowOpacity: isDark ? 0.3 : 0.05,
+              shadowRadius: 4,
             },
           }),
         },
         tabBarActiveBackgroundColor: isDark
-          ? 'rgba(99, 102, 241, 0.22)'
-          : 'rgba(99, 102, 241, 0.12)',
+          ? 'rgba(255, 255, 255, 0.06)'
+          : 'rgba(0, 0, 0, 0.04)',
         tabBarItemStyle: {
-          borderRadius: 14,
-          marginHorizontal: 3,
-          marginVertical: 3,
-          paddingVertical: 2,
+          borderRadius: 8,
+          marginHorizontal: 4,
+          marginVertical: 2,
+          paddingVertical: 3,
         },
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.textMuted,
         tabBarLabelStyle: {
           fontSize: 11,
-          fontWeight: '700',
-          marginTop: 1,
+          fontWeight: '600',
+          marginTop: 2,
         },
       }}
     >
@@ -77,7 +76,7 @@ export const TabNavigator = () => {
         component={MarketplaceScreen}
         options={{
           title: 'Projects',
-          tabBarIcon: ({ color }) => <Text style={{ color, fontSize: 18 }}>🚀</Text>,
+          tabBarIcon: ({ color }) => <FolderKanban size={18} color={color} />,
         }}
       />
       <Tab.Screen
@@ -85,7 +84,7 @@ export const TabNavigator = () => {
         component={MatchingScreen}
         options={{
           title: 'Matching',
-          tabBarIcon: ({ color }) => <Text style={{ color, fontSize: 18 }}>🤝</Text>,
+          tabBarIcon: ({ color }) => <Users size={18} color={color} />,
         }}
       />
       <Tab.Screen
@@ -106,11 +105,12 @@ export const TabNavigator = () => {
                 styles.createButton,
                 {
                   backgroundColor: colors.primary,
-                  shadowColor: colors.primary,
+                  borderColor: colors.border,
+                  borderWidth: 1,
                 },
               ]}
             >
-              <Text style={styles.createButtonText}>+</Text>
+              <Plus size={20} color={colors.onPrimary} />
             </View>
           ),
         }}
@@ -120,7 +120,7 @@ export const TabNavigator = () => {
         component={IdeaHubScreen}
         options={{
           title: 'Ideas',
-          tabBarIcon: ({ color }) => <Text style={{ color, fontSize: 18 }}>💡</Text>,
+          tabBarIcon: ({ color }) => <Lightbulb size={18} color={color} />,
         }}
       />
       <Tab.Screen
@@ -128,32 +128,20 @@ export const TabNavigator = () => {
         component={MoreScreen}
         options={{
           title: 'More',
-          tabBarIcon: ({ color }) => <Text style={{ color, fontSize: 18 }}>☰</Text>,
+          tabBarIcon: ({ color }) => <Menu size={18} color={color} />,
         }}
       />
     </Tab.Navigator>
   );
 };
 
-
 const styles = StyleSheet.create({
   createButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: Platform.OS === 'ios' ? 14 : 10,
-    elevation: 4,
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.3,
-    shadowRadius: 5,
-  },
-  createButtonText: {
-    color: '#FFFFFF',
-    fontSize: 26,
-    fontWeight: '400',
-    lineHeight: 28,
-    textAlign: 'center',
+    marginBottom: Platform.OS === 'ios' ? 12 : 8,
   },
 });

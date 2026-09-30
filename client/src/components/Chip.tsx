@@ -25,45 +25,21 @@ export const Chip: React.FC<ChipProps> = ({
 
   const getBackgroundColor = () => {
     if (selected) {
-      switch (variant) {
-        case 'secondary':
-          return colors.secondarySoft;
-        case 'tertiary':
-          return colors.tertiaryContainer;
-        case 'primary':
-        default:
-          return colors.primarySoft;
-      }
+      return colors.primary;
     }
     return colors.surfaceMuted;
   };
 
   const getTextColor = () => {
     if (selected) {
-      switch (variant) {
-        case 'secondary':
-          return colors.secondary;
-        case 'tertiary':
-          return colors.accent;
-        case 'primary':
-        default:
-          return colors.primary;
-      }
+      return colors.onPrimary;
     }
     return colors.textMuted;
   };
 
   const getBorderColor = () => {
     if (selected) {
-      switch (variant) {
-        case 'secondary':
-          return colors.secondary;
-        case 'tertiary':
-          return colors.accent;
-        case 'primary':
-        default:
-          return colors.primary;
-      }
+      return colors.primary;
     }
     return colors.border;
   };
@@ -82,10 +58,10 @@ export const Chip: React.FC<ChipProps> = ({
         {
           backgroundColor: getBackgroundColor(),
           borderColor: getBorderColor(),
-          borderRadius: borderRadius.pill,
-          paddingHorizontal: spacing.base,
-          paddingVertical: spacing.xs + 3,
-          minHeight: 36,
+          borderRadius: borderRadius.md,
+          paddingHorizontal: spacing.md,
+          paddingVertical: 6,
+          minHeight: 32,
         },
         style,
       ]}
@@ -96,7 +72,7 @@ export const Chip: React.FC<ChipProps> = ({
           {
             color: getTextColor(),
             fontSize: typography.bodySmall.fontSize,
-            fontWeight: selected ? '600' : '400',
+            fontWeight: selected ? '600' : '500',
           },
           textStyle,
         ]}

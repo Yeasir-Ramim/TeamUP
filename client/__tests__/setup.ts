@@ -18,3 +18,17 @@ jest.mock('socket.io-client', () => ({
     disconnect: jest.fn(),
   })),
 }));
+
+jest.mock('lucide-react-native', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const React = require('react');
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { View } = require('react-native');
+  return new Proxy(
+    {},
+    {
+      get: (_, name) => (props: any) =>
+        React.createElement(View, { testID: `icon-${String(name)}`, ...props }),
+    }
+  );
+});
