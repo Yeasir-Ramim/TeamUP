@@ -8,8 +8,9 @@ import {
   TouchableOpacity,
   ScrollView,
   Platform,
+  useWindowDimensions,
 } from 'react-native';
-import { Bell, Plus, Rocket } from 'lucide-react-native';
+import { Bell, Plus, Rocket, Sparkles, ArrowRight, Users, Lightbulb } from 'lucide-react-native';
 import { useSafeInsets } from '../../utils/useSafeInsets';
 import { useTheme } from '../../theme/ThemeContext';
 import { Card } from '../../components/Card';
@@ -109,6 +110,9 @@ export const MarketplaceScreen: React.FC<MarketplaceScreenProps> = ({ navigation
     fetchProjects(searchQuery, domain);
   };
 
+  const { width } = useWindowDimensions();
+  const isWide = width >= 680;
+
   const featuredProject = useMemo(() => {
     if (projects.length > 0) return projects[0];
     return null;
@@ -116,8 +120,213 @@ export const MarketplaceScreen: React.FC<MarketplaceScreenProps> = ({ navigation
 
   const regularProjects = useMemo(() => {
     if (projects.length > 1) return projects.slice(1);
-    return projects;
+    return [];
   }, [projects]);
+
+  const displayProjects = useMemo(() => {
+    if (searchQuery.trim().length > 0 || selectedDomain !== 'All') {
+      return projects;
+    }
+    return regularProjects;
+  }, [projects, regularProjects, searchQuery, selectedDomain]);
+
+  const renderFeaturedCard = (item: Project) => {
+    const isCreator = user?.id === item.creatorId;
+    const isMember = item.members?.some((m) => m.userId === user?.id && m.status === 'ACCEPTED');
+    const memberCount = item._count?.members ?? (item.members?.length || 1);
+    const validSkills = (item.requiredSkills || []).filter(
+      (req) => (req.skill?.name || req.skillName)?.trim()
+    );
+
+    return (
+      <Card
+        style={[
+          styles.featuredCard,
+          {
+            backgroundColor: colors.surface,
+            borderColor: colors.border,
+            marginBottom: spacing.base,
+          },
+        ]}
+        onPress={() => navigation?.navigate('ProjectDetail', { projectId: item.id })}
+      >
+        <View style={styles.featuredHeaderRow}>
+          <View
+            style={[
+              styles.featuredBadge,
+              {
+                backgroundColor: colors.primary,
+                borderRadius: borderRadius.sm,
+              },
+            ]}
+          >
+            <Sparkles size={13} color={colors.onPrimary} style={{ marginRight: 5 }} />
+            <Text style={[styles.featuredBadgeText, { color: colors.onPrimary }]}>
+              FEATURED PROJECT
+            </Text>
+          </View>
+          <Badge
+            label={item.status || 'OPEN'}
+            variant={item.status === 'OPEN' ? 'secondary' : 'primary'}
+          />
+        </View>
+
+        <View style={{ marginTop: spacing.md }}>
+          <Text style={[typography.h2, { color: colors.text, fontSize: 20 }]}>
+            {item.title}
+          </Text>
+          <Text
+            style={[typography.body, { color: colors.textMuted, marginTop: 4, lineHeight: 22 }]}
+            numberOfLines={3}
+          >
+            {item.description}
+          </Text>
+        </View>
+
+        <View style={[styles.metaRow, { marginTop: spacing.md }]}>
+          <Chip label={item.domain} style={{ marginRight: spacing.xs }} />
+          {item.semester ? <Chip label={item.semester} style={{ marginRight: spacing.xs }} /> : null}
+          <Badge
+            label={`${memberCount}/${item.maxMembers || 4} Members`}
+            variant="secondary"
+          />
+        </View>
+
+        {validSkills.length > 0 && (
+          <View style={[styles.skillsRow, { marginTop: spacing.xs }]}>
+            {validSkills.slice(0, 5).map((req, idx) => {
+              const skillName = req.skill?.name || req.skillName;
+              return (
+                <Chip
+                  key={req.id || idx.toString()}
+                  label={skillName!}
+                  style={{ marginRight: spacing.xs, marginBottom: spacing.xs }}
+                />
+              );
+            })}
+          </View>
+        )}
+
+        <View style={[styles.cardFooter, { marginTop: spacing.base }]}>
+          {isCreator || isMember ? (
+            <Button
+              title="Open Workspace"
+              variant="secondary"
+              size="md"
+              onPress={() =>
+                navigation?.navigate('Workspace', {
+                  projectId: item.id,
+                  projectTitle: item.title,
+                })
+              }
+              icon={<ArrowRight size={16} color={colors.text} />}
+            />
+          ) : (
+            <Button
+              title="View Details"
+              variant="primary"
+              size="md"
+              onPress={() => navigation?.navigate('ProjectDetail', { projectId: item.id })}
+              icon={<ArrowRight size={16} color={colors.onPrimary} />}
+            />
+          )}
+        </View>
+      </Card>
+    );
+  };
+
+  const renderActionTiles = () => (
+    <View style={[styles.actionTilesRow, { marginBottom: spacing.lg }]}>
+      <TouchableOpacity
+        activeOpacity={0.8}
+        accessibilityRole="button"
+        accessibilityLabel="Skill Radar"
+        onPress={() => navigation?.navigate('Matching')}
+        style={[
+          styles.actionTile,
+          {
+            backgroundColor: colors.surface,
+            borderColor: colors.border,
+            borderRadius: borderRadius.md,
+          },
+        ]}
+      >
+        <View style={styles.actionTileTop}>
+          <View
+            style={[
+              styles.actionTileIconWrapper,
+              { backgroundColor: colors.surfaceMuted, borderColor: colors.border },
+            ]}
+          >
+            <Users size={18} color={colors.primary} />
+          </View>
+          <ArrowRight size={15} color={colors.textMuted} />
+        </View>
+        <Text style={[typography.h3, { color: colors.text, fontSize: 16, marginTop: spacing.md }]}>
+          Skill Radar
+        </Text>
+        <Text
+          style={[typography.bodySmall, { color: colors.textMuted, marginTop: 4, lineHeight: 18 }]}
+          numberOfLines={2}
+        >
+          Find peers matching your exact stack & availability.
+        </Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        activeOpacity={0.8}
+        accessibilityRole="button"
+        accessibilityLabel="Idea Hub"
+        onPress={() => navigation?.navigate('IdeaHub')}
+        style={[
+          styles.actionTile,
+          {
+            backgroundColor: colors.surface,
+            borderColor: colors.border,
+            borderRadius: borderRadius.md,
+          },
+        ]}
+      >
+        <View style={styles.actionTileTop}>
+          <View
+            style={[
+              styles.actionTileIconWrapper,
+              { backgroundColor: colors.surfaceMuted, borderColor: colors.border },
+            ]}
+          >
+            <Lightbulb size={18} color={colors.primary} />
+          </View>
+          <ArrowRight size={15} color={colors.textMuted} />
+        </View>
+        <Text style={[typography.h3, { color: colors.text, fontSize: 16, marginTop: spacing.md }]}>
+          Idea Hub
+        </Text>
+        <Text
+          style={[typography.bodySmall, { color: colors.textMuted, marginTop: 4, lineHeight: 18 }]}
+          numberOfLines={2}
+        >
+          Explore community pitches or generate with AI.
+        </Text>
+      </TouchableOpacity>
+    </View>
+  );
+
+  const renderListHeader = () => (
+    <View style={styles.listHeaderContainer}>
+      {!searchQuery && selectedDomain === 'All' && featuredProject && renderFeaturedCard(featuredProject)}
+      {!searchQuery && selectedDomain === 'All' && renderActionTiles()}
+
+      <View style={[styles.sectionHeader, { marginBottom: spacing.md }]}>
+        <Text style={[typography.h3, { color: colors.text, fontSize: 18, fontWeight: '700' }]}>
+          {searchQuery ? 'Search Results' : selectedDomain !== 'All' ? `${selectedDomain} Projects` : 'Explore Projects'}
+        </Text>
+        <Badge
+          label={`${displayProjects.length} Available`}
+          variant="secondary"
+        />
+      </View>
+    </View>
+  );
 
   const renderProjectItem = ({ item }: { item: Project }) => {
     const isCreator = user?.id === item.creatorId;
@@ -129,7 +338,11 @@ export const MarketplaceScreen: React.FC<MarketplaceScreenProps> = ({ navigation
 
     return (
       <Card
-        style={[styles.projectCard, { marginBottom: spacing.md }]}
+        style={[
+          styles.projectCard,
+          isWide && styles.projectCardWide,
+          { marginBottom: spacing.md },
+        ]}
         onPress={() => navigation?.navigate('ProjectDetail', { projectId: item.id })}
       >
         <View style={styles.cardHeader}>
@@ -146,14 +359,14 @@ export const MarketplaceScreen: React.FC<MarketplaceScreenProps> = ({ navigation
                   },
                 ]}
               >
-                <Rocket size={18} color={colors.primary} />
+                <Rocket size={17} color={colors.primary} />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={[typography.h3, { color: colors.text }]} numberOfLines={1}>
+                <Text style={[typography.h3, { color: colors.text, fontSize: 16 }]} numberOfLines={1}>
                   {item.title}
                 </Text>
                 <Text
-                  style={[typography.bodySmall, { color: colors.textMuted, marginTop: 3 }]}
+                  style={[typography.bodySmall, { color: colors.textMuted, marginTop: 2 }]}
                   numberOfLines={2}
                 >
                   {item.description}
@@ -178,7 +391,7 @@ export const MarketplaceScreen: React.FC<MarketplaceScreenProps> = ({ navigation
 
         {validSkills.length > 0 && (
           <View style={[styles.skillsRow, { marginTop: spacing.xs }]}>
-            {validSkills.slice(0, 4).map((req, idx) => {
+            {validSkills.slice(0, 3).map((req, idx) => {
               const skillName = req.skill?.name || req.skillName;
               return (
                 <Chip
@@ -188,9 +401,9 @@ export const MarketplaceScreen: React.FC<MarketplaceScreenProps> = ({ navigation
                 />
               );
             })}
-            {validSkills.length > 4 && (
+            {validSkills.length > 3 && (
               <Chip
-                label={`+${validSkills.length - 4} more`}
+                label={`+${validSkills.length - 3} more`}
                 style={{ marginBottom: spacing.xs }}
               />
             )}
@@ -339,10 +552,18 @@ export const MarketplaceScreen: React.FC<MarketplaceScreenProps> = ({ navigation
             onEmptyAction={() => navigation?.navigate('CreateProject')}
           >
             <FlatList
-              data={projects}
+              key={isWide ? 'bento-grid-2' : 'bento-list-1'}
+              data={displayProjects}
+              numColumns={isWide ? 2 : 1}
+              columnWrapperStyle={isWide ? styles.columnWrapper : undefined}
               keyExtractor={(item) => item.id}
               renderItem={renderProjectItem}
-              contentContainerStyle={{ paddingHorizontal: spacing.screenPadding, paddingTop: spacing.md, paddingBottom: 90 }}
+              ListHeaderComponent={renderListHeader}
+              contentContainerStyle={{
+                paddingHorizontal: spacing.screenPadding,
+                paddingTop: spacing.md,
+                paddingBottom: 100,
+              }}
               refreshControl={
                 <RefreshControl
                   refreshing={refreshing}
@@ -411,7 +632,63 @@ const styles = StyleSheet.create({
   body: {
     flex: 1,
   },
+  listHeaderContainer: {
+    width: '100%',
+  },
+  featuredCard: {
+    padding: 20,
+    borderWidth: 1,
+  },
+  featuredHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  featuredBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  featuredBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+  actionTilesRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  actionTile: {
+    width: '48.5%',
+    padding: 16,
+    borderWidth: 1,
+  },
+  actionTileTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  actionTileIconWrapper: {
+    width: 36,
+    height: 36,
+    borderRadius: 8,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
   projectCard: {},
+  projectCardWide: {
+    width: '48.8%',
+  },
+  columnWrapper: {
+    justifyContent: 'space-between',
+  },
   cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
