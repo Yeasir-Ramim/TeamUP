@@ -53,7 +53,6 @@ export class ProfilesService {
         user: {
           select: {
             id: true,
-            email: true,
             role: true,
           },
         },
