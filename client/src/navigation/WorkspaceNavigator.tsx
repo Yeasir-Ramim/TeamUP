@@ -39,11 +39,7 @@ export const WorkspaceNavigator: React.FC<WorkspaceNavigatorProps> = ({ route })
     <Stack.Navigator
       initialRouteName="WorkspaceHome"
       screenOptions={{
-        headerStyle: {
-          backgroundColor: colors.surface,
-        },
-        headerTintColor: colors.onSurface,
-        headerShadowVisible: false,
+        headerShown: false,
       }}
     >
       <Stack.Screen
