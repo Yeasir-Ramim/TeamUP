@@ -7,6 +7,7 @@ import {
   Alert,
   RefreshControl,
   TouchableOpacity,
+  Platform,
 } from 'react-native';
 import { useTheme } from '../../theme/ThemeContext';
 import { AppHeader } from '../../components/AppHeader';
@@ -23,6 +24,7 @@ export interface MemberListScreenProps {
     params?: {
       projectId: string;
       projectTitle?: string;
+      isLeader?: boolean;
     };
   };
   navigation?: any;
@@ -72,8 +74,21 @@ export const MemberListScreen: React.FC<MemberListScreenProps> = ({ route, navig
     }
   };
 
-  const currentMember = members.find((m) => m.userId === user?.id);
-  const isLeader = currentMember?.role === 'LEADER';
+  const currentUserId = user?.userId || user?.id;
+  const currentMember = members.find(
+    (m) =>
+      (currentUserId && m.userId === currentUserId) ||
+      (user?.email && m.user?.email && m.user.email.toLowerCase() === user.email.toLowerCase())
+  );
+  const isLeader =
+    Boolean(route?.params?.isLeader) ||
+    currentMember?.role === 'LEADER' ||
+    members.some(
+      (m) =>
+        m.role === 'LEADER' &&
+        ((currentUserId && m.userId === currentUserId) ||
+          (user?.email && m.user?.email && m.user.email.toLowerCase() === user.email.toLowerCase()))
+    );
 
   // Separate Accepted Members from Pending Applications
   const acceptedMembers = useMemo(() => members.filter((m) => m.status === 'ACCEPTED'), [members]);
@@ -83,41 +98,61 @@ export const MemberListScreen: React.FC<MemberListScreenProps> = ({ route, navig
   const handleUpdateStatus = async (memberId: string, status: 'ACCEPTED' | 'REJECTED') => {
     try {
       await workspaceService.updateMember(projectId, memberId, { status });
-      Alert.alert('Success', `Member ${status.toLowerCase()} successfully`);
-      fetchMembers();
+      await fetchMembers();
+      if (Platform.OS === 'web') {
+        console.log(`Member ${status.toLowerCase()} successfully`);
+      } else {
+        Alert.alert('Success', `Member ${status.toLowerCase()} successfully`);
+      }
     } catch (err: any) {
-      Alert.alert('Error', err?.message || 'Failed to update member status');
+      if (Platform.OS === 'web') {
+        window.alert(err?.message || 'Failed to update member status');
+      } else {
+        Alert.alert('Error', err?.message || 'Failed to update member status');
+      }
     }
   };
 
   const handleRemoveMember = (memberId: string, memberName: string) => {
-    Alert.alert(
-      'Remove Member',
-      `Are you sure you want to remove ${memberName} from this project?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Remove',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await workspaceService.removeMember(projectId, memberId);
-              Alert.alert('Success', 'Member removed');
-              fetchMembers();
-            } catch (err: any) {
-              Alert.alert('Error', err?.message || 'Failed to remove member');
-            }
-          },
-        },
-      ]
-    );
+    const confirmAction = async () => {
+      try {
+        await workspaceService.removeMember(projectId, memberId);
+        await fetchMembers();
+        if (Platform.OS !== 'web') {
+          Alert.alert('Success', 'Member removed');
+        }
+      } catch (err: any) {
+        if (Platform.OS === 'web') {
+          window.alert(err?.message || 'Failed to remove member');
+        } else {
+          Alert.alert('Error', err?.message || 'Failed to remove member');
+        }
+      }
+    };
+
+    if (Platform.OS === 'web') {
+      if (typeof window !== 'undefined' && window.confirm(`Are you sure you want to remove ${memberName} from this project?`)) {
+        confirmAction();
+      }
+    } else {
+      Alert.alert(
+        'Remove Member',
+        `Are you sure you want to remove ${memberName} from this project?`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Remove', style: 'destructive', onPress: confirmAction },
+        ]
+      );
+    }
   };
 
   const renderMemberCard = (item: ProjectMember) => {
     const displayName = item.user?.profile?.fullName || item.user?.email || 'Team Member';
     const email = item.user?.email || '';
     const department = item.user?.profile?.department || 'Department N/A';
-    const isSelf = item.userId === user?.id;
+    const isSelf =
+      (currentUserId && item.userId === currentUserId) ||
+      (user?.email && item.user?.email && item.user.email.toLowerCase() === user.email.toLowerCase());
 
     return (
       <Card key={item.id} style={[styles.memberCard, { marginBottom: spacing.sm }]}>

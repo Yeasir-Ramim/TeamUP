@@ -132,7 +132,7 @@ export const WorkspaceHomeScreen: React.FC<WorkspaceHomeScreenProps> = ({ route,
         </TouchableOpacity>
         <TouchableOpacity
           style={styles.tabItem}
-          onPress={() => navigation?.navigate('Members', { projectId, projectTitle })}
+          onPress={() => navigation?.navigate('Members', { projectId, projectTitle, isLeader })}
         >
           <Text style={[styles.tabText, { color: colors.textMuted }]}>Team</Text>
         </TouchableOpacity>
@@ -337,16 +337,17 @@ export const WorkspaceHomeScreen: React.FC<WorkspaceHomeScreenProps> = ({ route,
             </View>
 
             <Text style={[typography.body, { color: colors.textMuted, marginVertical: spacing.sm }]}>
-              Collaborators currently assigned to this project workspace.
+              Collaborators currently assigned to this project workspace. Review pending applications and manage team members.
             </Text>
 
             <Button
-              title="View & Manage Members"
+              title={isLeader ? "Review & Manage Members" : "View Team Members"}
               variant="outline"
               onPress={() =>
                 navigation?.navigate('Members', {
                   projectId,
                   projectTitle,
+                  isLeader,
                 })
               }
             />

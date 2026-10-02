@@ -131,8 +131,16 @@ export const MarketplaceScreen: React.FC<MarketplaceScreenProps> = ({ navigation
   }, [projects, regularProjects, searchQuery, selectedDomain]);
 
   const renderFeaturedCard = (item: Project) => {
-    const isCreator = user?.id === item.creatorId;
-    const isMember = item.members?.some((m) => m.userId === user?.id && m.status === 'ACCEPTED');
+    const currentUserId = user?.userId || user?.id;
+    const isCreator =
+      (currentUserId && currentUserId === item.creatorId) ||
+      (user?.email && item.creator?.email && user.email.toLowerCase() === item.creator.email.toLowerCase());
+    const isMember = item.members?.some(
+      (m) =>
+        ((currentUserId && m.userId === currentUserId) ||
+          (user?.email && m.user?.email && m.user.email.toLowerCase() === user.email.toLowerCase())) &&
+        m.status === 'ACCEPTED'
+    );
     const memberCount = item._count?.members ?? (item.members?.length || 1);
     const validSkills = (item.requiredSkills || []).filter(
       (req) => (req.skill?.name || req.skillName)?.trim()
@@ -328,8 +336,16 @@ export const MarketplaceScreen: React.FC<MarketplaceScreenProps> = ({ navigation
   );
 
   const renderProjectItem = ({ item }: { item: Project }) => {
-    const isCreator = user?.id === item.creatorId;
-    const isMember = item.members?.some((m) => m.userId === user?.id && m.status === 'ACCEPTED');
+    const currentUserId = user?.userId || user?.id;
+    const isCreator =
+      (currentUserId && currentUserId === item.creatorId) ||
+      (user?.email && item.creator?.email && user.email.toLowerCase() === item.creator.email.toLowerCase());
+    const isMember = item.members?.some(
+      (m) =>
+        ((currentUserId && m.userId === currentUserId) ||
+          (user?.email && m.user?.email && m.user.email.toLowerCase() === user.email.toLowerCase())) &&
+        m.status === 'ACCEPTED'
+    );
     const memberCount = item._count?.members ?? (item.members?.length || 1);
     const validSkills = (item.requiredSkills || []).filter(
       (req) => (req.skill?.name || req.skillName)?.trim()

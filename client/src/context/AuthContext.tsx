@@ -42,6 +42,53 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+function parseJwtPayload(token: string): any {
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) return null;
+    const base64Url = parts[1];
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    const padded = base64.padEnd(base64.length + ((4 - (base64.length % 4)) % 4), '=');
+    if (typeof atob === 'function') {
+      return JSON.parse(atob(padded));
+    }
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=';
+    let str = '';
+    for (let i = 0; i < padded.length; i += 4) {
+      const enc1 = chars.indexOf(padded.charAt(i));
+      const enc2 = chars.indexOf(padded.charAt(i + 1));
+      const enc3 = chars.indexOf(padded.charAt(i + 2));
+      const enc4 = chars.indexOf(padded.charAt(i + 3));
+      const chr1 = (enc1 << 2) | (enc2 >> 4);
+      const chr2 = ((enc2 & 15) << 4) | (enc3 >> 2);
+      const chr3 = ((enc3 & 3) << 6) | enc4;
+      str += String.fromCharCode(chr1);
+      if (enc3 !== 64 && enc3 !== -1) str += String.fromCharCode(chr2);
+      if (enc4 !== 64 && enc4 !== -1) str += String.fromCharCode(chr3);
+    }
+    return JSON.parse(str);
+  } catch {
+    return null;
+  }
+}
+
+const normalizeUserProfile = (
+  data: any,
+  existing?: UserProfile | null,
+  fallbackEmail?: string
+): UserProfile => {
+  const resolvedUserId = data?.userId || existing?.userId || existing?.id || data?.id || '';
+  const resolvedEmail = data?.email || existing?.email || fallbackEmail || '';
+  return {
+    ...existing,
+    ...data,
+    id: resolvedUserId,
+    userId: resolvedUserId,
+    email: resolvedEmail,
+    fullName: data?.fullName || existing?.fullName || (resolvedEmail ? resolvedEmail.split('@')[0] : 'User'),
+  };
+};
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [token, setToken] = useState<string | null>(null);
@@ -50,7 +97,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const fetchProfile = async () => {
     try {
       const profileData = await api.get<UserProfile>('/profiles/me');
-      setUser((prev) => (prev ? { ...prev, ...profileData } : profileData));
+      setUser((prev) => normalizeUserProfile(profileData, prev));
     } catch (err) {
       if (err instanceof ApiError && err.code === 'UNAUTHORIZED') {
         await tokenStorage.clearAll();
@@ -79,14 +126,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
         setToken(accessToken);
 
+        const tokenPayload = parseJwtPayload(accessToken);
+        const tokenEmail = tokenPayload?.email || '';
+
         if (res.user) {
-          setUser(res.user);
+          try {
+            const profile = await api.get<UserProfile>('/profiles/me');
+            setUser(normalizeUserProfile(profile, res.user, tokenEmail));
+          } catch {
+            setUser(normalizeUserProfile(res.user, null, tokenEmail));
+          }
         } else {
           try {
             const profile = await api.get<UserProfile>('/profiles/me');
-            setUser(profile);
+            setUser(normalizeUserProfile(profile, null, tokenEmail));
           } catch {
-            setUser({ email: '', fullName: 'GitHub User' });
+            setUser(normalizeUserProfile({ email: tokenEmail, fullName: 'GitHub User' }, null, tokenEmail));
           }
         }
 
@@ -139,9 +194,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (storedToken && isMounted) {
           setToken(storedToken);
           try {
+            const tokenPayload = parseJwtPayload(storedToken);
+            const tokenEmail = tokenPayload?.email || '';
+            const tokenUserId = tokenPayload?.sub || '';
+
             const profileData = await api.get<UserProfile>('/profiles/me');
             if (isMounted) {
-              setUser(profileData);
+              setUser(normalizeUserProfile(profileData, null, tokenEmail || tokenUserId));
               // Register push notification token if not already done
               await pushNotificationService.registerDevicePushToken().catch(console.warn);
             }
@@ -203,15 +262,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
         setToken(accessToken);
 
-        // Fetch or assign full user profile
+        // Fetch or assign full user profile with normalized user id and email
         if (res.user) {
-          setUser(res.user);
+          try {
+            const profile = await api.get<UserProfile>('/profiles/me');
+            setUser(normalizeUserProfile(profile, res.user, email));
+          } catch {
+            setUser(normalizeUserProfile(res.user, null, email));
+          }
         } else {
           try {
             const profile = await api.get<UserProfile>('/profiles/me');
-            setUser(profile);
+            setUser(normalizeUserProfile(profile, null, email));
           } catch {
-            setUser({ email, fullName: email.split('@')[0] });
+            setUser(normalizeUserProfile({ email, fullName: email.split('@')[0] }, null, email));
           }
         }
 
@@ -243,9 +307,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setToken(accessToken);
         try {
           const profile = await api.get<UserProfile>('/profiles/me');
-          setUser(profile);
+          setUser(normalizeUserProfile(profile, res.user, email));
         } catch {
-          setUser({ ...(res.user || {}), email, fullName });
+          setUser(normalizeUserProfile({ ...(res.user || {}), email, fullName }, null, email));
         }
 
         // Register push notification token
