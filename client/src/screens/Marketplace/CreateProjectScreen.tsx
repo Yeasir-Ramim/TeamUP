@@ -7,6 +7,7 @@ import {
   ScrollView,
   Alert,
   TouchableOpacity,
+  Platform,
 } from 'react-native';
 import { useTheme } from '../../theme/ThemeContext';
 import { AppHeader } from '../../components/AppHeader';
@@ -122,17 +123,30 @@ export const CreateProjectScreen: React.FC<CreateProjectScreenProps> = ({ naviga
         requiredSkills: skills,
       });
 
-      Alert.alert('Success', 'Project created successfully!', [
-        {
-          text: 'Open Workspace',
-          onPress: () => {
-            navigation?.replace?.('Workspace', {
-              projectId: created.id,
-              projectTitle: created.title,
-            });
+      const navigateToWorkspace = () => {
+        if (navigation?.replace) {
+          navigation.replace('Workspace', {
+            projectId: created.id,
+            projectTitle: created.title,
+          });
+        } else if (navigation?.navigate) {
+          navigation.navigate('Workspace', {
+            projectId: created.id,
+            projectTitle: created.title,
+          });
+        }
+      };
+
+      if (Platform.OS === 'web') {
+        navigateToWorkspace();
+      } else {
+        Alert.alert('Success', 'Project created successfully!', [
+          {
+            text: 'Open Workspace',
+            onPress: navigateToWorkspace,
           },
-        },
-      ]);
+        ]);
+      }
     } catch (err: any) {
       setServerError(err?.message || 'Failed to create project.');
     } finally {
@@ -359,7 +373,7 @@ export const CreateProjectScreen: React.FC<CreateProjectScreenProps> = ({ naviga
               </Text>
 
               <Text style={[typography.label, { color: colors.textMuted, marginBottom: 4 }]}>
-                Maximum Team Members (2–20)
+                Maximum Team Members (2-20)
               </Text>
               <TextInput
                 style={[
@@ -404,7 +418,7 @@ export const CreateProjectScreen: React.FC<CreateProjectScreenProps> = ({ naviga
                   value={newSkill}
                   onChangeText={setNewSkill}
                 />
-                <Button title="+ Add" variant="secondary" onPress={handleAddSkill} size="sm" />
+                <Button title="Add Skill" variant="secondary" onPress={handleAddSkill} size="sm" />
               </View>
 
               {/* Experience Level Selector */}
@@ -439,7 +453,7 @@ export const CreateProjectScreen: React.FC<CreateProjectScreenProps> = ({ naviga
                         {s.skillName} ({s.minimumExperience})
                       </Text>
                       <TouchableOpacity onPress={() => handleRemoveSkill(idx)}>
-                        <Text style={{ color: colors.accent, fontWeight: '700' }}>✕</Text>
+                        <Text style={{ color: colors.textMuted, fontWeight: '700' }}>X</Text>
                       </TouchableOpacity>
                     </View>
                   ))}
@@ -449,13 +463,13 @@ export const CreateProjectScreen: React.FC<CreateProjectScreenProps> = ({ naviga
 
             <View style={styles.stepButtonsRow}>
               <Button
-                title="← Back"
+                title="Back"
                 variant="outline"
                 onPress={() => setCurrentStep(1)}
                 style={{ flex: 1, marginRight: spacing.sm }}
               />
               <Button
-                title="Next: Review →"
+                title="Next: Review"
                 variant="primary"
                 onPress={() => setCurrentStep(3)}
                 style={{ flex: 1 }}
@@ -481,7 +495,7 @@ export const CreateProjectScreen: React.FC<CreateProjectScreenProps> = ({ naviga
               <View style={styles.previewMetaRow}>
                 <Badge label={domain || 'General'} variant="primary" style={{ marginRight: 6 }} />
                 <Badge label={semester || 'Ongoing'} variant="secondary" style={{ marginRight: 6 }} />
-                <Badge label={`👥 Up to ${maxMembers} members`} variant="tertiary" />
+                <Badge label={`Up to ${maxMembers} members`} variant="tertiary" />
               </View>
 
               <View style={[styles.divider, { backgroundColor: colors.border }]} />
@@ -492,7 +506,7 @@ export const CreateProjectScreen: React.FC<CreateProjectScreenProps> = ({ naviga
               {skills.length > 0 ? (
                 <View style={styles.previewSkillsRow}>
                   {skills.map((s, idx) => (
-                    <Chip key={idx} label={`${s.skillName} • ${s.minimumExperience}`} selected variant="secondary" />
+                    <Chip key={idx} label={`${s.skillName} (${s.minimumExperience})`} selected variant="secondary" />
                   ))}
                 </View>
               ) : (
@@ -502,15 +516,21 @@ export const CreateProjectScreen: React.FC<CreateProjectScreenProps> = ({ naviga
               )}
             </Card>
 
+            {serverError && (
+              <Card style={{ backgroundColor: colors.errorContainer, marginBottom: spacing.md }}>
+                <Text style={[typography.body, { color: colors.onErrorContainer }]}>{serverError}</Text>
+              </Card>
+            )}
+
             <View style={styles.stepButtonsRow}>
               <Button
-                title="← Back"
+                title="Back"
                 variant="outline"
                 onPress={() => setCurrentStep(2)}
                 style={{ flex: 1, marginRight: spacing.sm }}
               />
               <Button
-                title="Publish Project 🚀"
+                title="Publish Project"
                 variant="primary"
                 loading={isSubmitting}
                 disabled={isSubmitting}
