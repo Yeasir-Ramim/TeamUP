@@ -336,102 +336,102 @@ export const MarketplaceScreen: React.FC<MarketplaceScreenProps> = ({ navigation
     );
 
     return (
-      <Card
-        style={[
-          styles.projectCard,
-          isWide && styles.projectCardWide,
-          { marginBottom: spacing.md },
-        ]}
-        onPress={() => navigation?.navigate('ProjectDetail', { projectId: item.id })}
-      >
-        <View style={styles.cardHeader}>
-          <View style={styles.titleContainer}>
-            <View style={styles.iconTitleRow}>
-              <View
-                style={[
-                  styles.projectIconBadge,
-                  {
-                    backgroundColor: colors.surfaceMuted,
-                    borderColor: colors.border,
-                    borderWidth: 1,
-                    borderRadius: borderRadius.md,
-                  },
-                ]}
-              >
-                <Rocket size={17} color={colors.primary} />
+      <View style={[styles.projectCardWrapper, isWide && styles.projectCardWrapperWide]}>
+        <Card
+          style={styles.projectCard}
+          onPress={() => navigation?.navigate('ProjectDetail', { projectId: item.id })}
+        >
+          <View>
+            <View style={styles.cardHeader}>
+              <View style={styles.titleContainer}>
+                <View style={styles.iconTitleRow}>
+                  <View
+                    style={[
+                      styles.projectIconBadge,
+                      {
+                        backgroundColor: colors.surfaceMuted,
+                        borderColor: colors.border,
+                        borderWidth: 1,
+                        borderRadius: borderRadius.md,
+                      },
+                    ]}
+                  >
+                    <Rocket size={17} color={colors.primary} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[typography.h3, { color: colors.text, fontSize: 16 }]} numberOfLines={1}>
+                      {item.title}
+                    </Text>
+                    <Text
+                      style={[typography.bodySmall, { color: colors.textMuted, marginTop: 2 }]}
+                      numberOfLines={2}
+                    >
+                      {item.description}
+                    </Text>
+                  </View>
+                </View>
               </View>
-              <View style={{ flex: 1 }}>
-                <Text style={[typography.h3, { color: colors.text, fontSize: 16 }]} numberOfLines={1}>
-                  {item.title}
-                </Text>
-                <Text
-                  style={[typography.bodySmall, { color: colors.textMuted, marginTop: 2 }]}
-                  numberOfLines={2}
-                >
-                  {item.description}
-                </Text>
-              </View>
+              <Badge
+                label={item.status || 'OPEN'}
+                variant={item.status === 'OPEN' ? 'secondary' : 'primary'}
+              />
             </View>
+
+            <View style={[styles.metaRow, { marginTop: spacing.md }]}>
+              <Chip label={item.domain} style={{ marginRight: spacing.xs }} />
+              {item.semester ? <Chip label={item.semester} style={{ marginRight: spacing.xs }} /> : null}
+              <Badge
+                label={`${memberCount}/${item.maxMembers || 4} Members`}
+                variant="secondary"
+              />
+            </View>
+
+            {validSkills.length > 0 && (
+              <View style={[styles.skillsRow, { marginTop: spacing.xs }]}>
+                {validSkills.slice(0, 3).map((req, idx) => {
+                  const skillName = req.skill?.name || req.skillName;
+                  return (
+                    <Chip
+                      key={req.id || idx.toString()}
+                      label={skillName!}
+                      style={{ marginRight: spacing.xs, marginBottom: spacing.xs }}
+                    />
+                  );
+                })}
+                {validSkills.length > 3 && (
+                  <Chip
+                    label={`+${validSkills.length - 3} more`}
+                    style={{ marginBottom: spacing.xs }}
+                  />
+                )}
+              </View>
+            )}
           </View>
-          <Badge
-            label={item.status || 'OPEN'}
-            variant={item.status === 'OPEN' ? 'secondary' : 'primary'}
-          />
-        </View>
 
-        <View style={[styles.metaRow, { marginTop: spacing.md }]}>
-          <Chip label={item.domain} style={{ marginRight: spacing.xs }} />
-          {item.semester ? <Chip label={item.semester} style={{ marginRight: spacing.xs }} /> : null}
-          <Badge
-            label={`${memberCount}/${item.maxMembers || 4} Members`}
-            variant="secondary"
-          />
-        </View>
-
-        {validSkills.length > 0 && (
-          <View style={[styles.skillsRow, { marginTop: spacing.xs }]}>
-            {validSkills.slice(0, 3).map((req, idx) => {
-              const skillName = req.skill?.name || req.skillName;
-              return (
-                <Chip
-                  key={req.id || idx.toString()}
-                  label={skillName!}
-                  style={{ marginRight: spacing.xs, marginBottom: spacing.xs }}
-                />
-              );
-            })}
-            {validSkills.length > 3 && (
-              <Chip
-                label={`+${validSkills.length - 3} more`}
-                style={{ marginBottom: spacing.xs }}
+          <View style={[styles.cardFooter, { marginTop: spacing.md }]}>
+            {isCreator || isMember ? (
+              <Button
+                title="Open Workspace"
+                variant="secondary"
+                size="sm"
+                onPress={() =>
+                  navigation?.navigate('Workspace', {
+                    projectId: item.id,
+                    projectTitle: item.title,
+                  })
+                }
+              />
+            ) : (
+              <Button
+                title="View Details"
+                variant="outline"
+                size="sm"
+                onPress={() => navigation?.navigate('ProjectDetail', { projectId: item.id })}
               />
             )}
           </View>
-        )}
-
-        <View style={[styles.cardFooter, { marginTop: spacing.md }]}>
-          {isCreator || isMember ? (
-            <Button
-              title="Open Workspace"
-              variant="secondary"
-              size="sm"
-              onPress={() =>
-                navigation?.navigate('Workspace', {
-                  projectId: item.id,
-                  projectTitle: item.title,
-                })
-              }
-            />
-          ) : (
-            <Button
-              title="View Details"
-              variant="outline"
-              size="sm"
-              onPress={() => navigation?.navigate('ProjectDetail', { projectId: item.id })}
-            />
-          )}
-        </View>
-      </Card>
+        </Card>
+      </View>
     );
   };
 
@@ -638,7 +638,6 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 960,
     alignSelf: 'center',
-    paddingHorizontal: 16,
     flex: 1,
     height: '100%',
   },
@@ -670,7 +669,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   actionTile: {
-    width: '48.5%',
+    width: '48.8%',
     padding: 16,
     borderWidth: 1,
   },
@@ -692,9 +691,18 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  projectCard: {},
-  projectCardWide: {
+  projectCardWrapper: {
+    width: '100%',
+    marginBottom: 16,
+  },
+  projectCardWrapperWide: {
     width: '48.8%',
+    marginBottom: 16,
+  },
+  projectCard: {
+    flex: 1,
+    height: '100%',
+    justifyContent: 'space-between',
   },
   columnWrapper: {
     justifyContent: 'space-between',
