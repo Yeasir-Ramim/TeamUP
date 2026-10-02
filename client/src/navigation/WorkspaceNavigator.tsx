@@ -40,6 +40,7 @@ export const WorkspaceNavigator: React.FC<WorkspaceNavigatorProps> = ({ route })
       initialRouteName="WorkspaceHome"
       screenOptions={{
         headerShown: false,
+        animation: 'none',
       }}
     >
       <Stack.Screen

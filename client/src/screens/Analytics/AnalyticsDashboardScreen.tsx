@@ -14,6 +14,7 @@ import { Card } from '../../components/Card';
 import { Badge } from '../../components/Badge';
 import { Button } from '../../components/Button';
 import { StateWrapper, ScreenState } from '../../components/StateWrapper';
+import { WorkspaceTabBar } from '../../components/WorkspaceTabBar';
 import {
   analyticsService,
   ProjectAnalytics,
@@ -36,7 +37,7 @@ const SCREEN_WIDTH = Dimensions.get('window').width;
 const CHART_PADDING = 32; // 16px each side
 const CHART_WIDTH = SCREEN_WIDTH - CHART_PADDING * 2;
 
-// ─── Skeleton shimmer component ────────────────────────────────────────────────
+// --- Skeleton shimmer component ---
 
 const SkeletonBlock: React.FC<{ width?: number | string; height: number; borderRadius?: number; style?: any }> = ({
   width = '100%', height, borderRadius = 8, style,
@@ -62,7 +63,7 @@ const SkeletonBlock: React.FC<{ width?: number | string; height: number; borderR
   );
 };
 
-// ─── Inline bar chart (no external lib) ───────────────────────────────────────
+// --- Inline bar chart (no external lib) ---
 
 const BarChart: React.FC<{
   data: { label: string; value: number; color: string }[];
@@ -118,7 +119,7 @@ const BarChart: React.FC<{
   );
 };
 
-// ─── Horizontal progress bar ───────────────────────────────────────────────────
+// --- Horizontal progress bar ---
 
 const HorizontalBar: React.FC<{ value: number; max: number; color: string; height?: number }> = ({
   value, max, color, height = 8,
@@ -132,7 +133,7 @@ const HorizontalBar: React.FC<{ value: number; max: number; color: string; heigh
   );
 };
 
-// ─── Loading skeleton layout ───────────────────────────────────────────────────
+// --- Loading skeleton layout ---
 
 const LoadingSkeleton: React.FC = () => {
   const { spacing } = useTheme();
@@ -158,7 +159,7 @@ const LoadingSkeleton: React.FC = () => {
   );
 };
 
-// ─── Main component ────────────────────────────────────────────────────────────
+// --- Main component ---
 
 export const AnalyticsDashboardScreen: React.FC<AnalyticsDashboardScreenProps> = ({
   route,
@@ -173,7 +174,7 @@ export const AnalyticsDashboardScreen: React.FC<AnalyticsDashboardScreenProps> =
   const [errorMessage, setErrorMessage] = useState<string | undefined>();
   const [refreshing, setRefreshing] = useState(false);
 
-  // ─── Data fetching ───────────────────────────────────────────────────────
+  // --- Data fetching ---
 
   const fetchAnalytics = useCallback(() => {
     if (!projectId) return;
@@ -215,7 +216,7 @@ export const AnalyticsDashboardScreen: React.FC<AnalyticsDashboardScreenProps> =
     }
   }, [projectId]);
 
-  // ─── Render sections ─────────────────────────────────────────────────────
+  // --- Render sections ---
 
   const renderSummaryCards = (data: ProjectAnalytics) => (
     <View style={[styles.summaryRow, { marginBottom: spacing.md }]}>
@@ -436,7 +437,7 @@ export const AnalyticsDashboardScreen: React.FC<AnalyticsDashboardScreenProps> =
     );
   };
 
-  // ─── Main render ──────────────────────────────────────────────────────────
+  // --- Main render ---
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -447,14 +448,21 @@ export const AnalyticsDashboardScreen: React.FC<AnalyticsDashboardScreenProps> =
         onBack={() => navigation?.goBack?.()}
         actions={[
           {
-            icon: <Text style={{ fontSize: 18 }}>🔄</Text>,
+            icon: <Text style={{ fontSize: 13, fontWeight: '700', color: colors.primary }}>Refresh</Text>,
             onPress: onRefresh,
             accessibilityLabel: 'Refresh analytics',
           },
         ]}
       />
 
-      {/* Show skeleton during loading — matches card geometry */}
+      <WorkspaceTabBar
+        activeTab="Analytics"
+        projectId={projectId}
+        projectTitle={projectTitle}
+        navigation={navigation}
+      />
+
+      {/* Show skeleton during loading - matches card geometry */}
       {screenState === 'loading' ? (
         <LoadingSkeleton />
       ) : (

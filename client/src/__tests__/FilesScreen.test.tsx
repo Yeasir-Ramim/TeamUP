@@ -23,7 +23,7 @@ jest.mock('../services/fileService', () => ({
     deleteFile: jest.fn(),
   },
   formatFileSize: (bytes: number) => `${bytes} B`,
-  getFileIcon: () => '📄',
+  getFileIcon: () => 'PDF',
   getFileCategory: () => 'DOCUMENT',
   MAX_FILE_SIZE_BYTES: 25 * 1024 * 1024,
   ALLOWED_MIME_TYPES: ['application/pdf', 'image/jpeg'],

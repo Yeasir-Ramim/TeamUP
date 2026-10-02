@@ -18,6 +18,7 @@ import { useTheme } from '../../theme/ThemeContext';
 import { AppHeader } from '../../components/AppHeader';
 import { Badge } from '../../components/Badge';
 import { StateWrapper, ScreenState } from '../../components/StateWrapper';
+import { WorkspaceTabBar } from '../../components/WorkspaceTabBar';
 import {
   socketService,
   ChatMessage,
@@ -764,6 +765,13 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
               ]
             : []),
         ]}
+      />
+
+      <WorkspaceTabBar
+        activeTab="Chat"
+        projectId={projectId}
+        projectTitle={projectTitle}
+        navigation={navigation}
       />
 
       <View style={styles.contentRow}>

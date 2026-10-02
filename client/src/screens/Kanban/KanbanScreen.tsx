@@ -19,6 +19,7 @@ import { Badge } from '../../components/Badge';
 import { Button } from '../../components/Button';
 import { Chip } from '../../components/Chip';
 import { StateWrapper, ScreenState } from '../../components/StateWrapper';
+import { WorkspaceTabBar } from '../../components/WorkspaceTabBar';
 import { taskService, Task, TaskStatus, TaskPriority } from '../../services/taskService';
 
 export interface KanbanScreenProps {
@@ -310,6 +311,13 @@ export const KanbanScreen: React.FC<KanbanScreenProps> = ({ route, navigation })
             accessibilityLabel: 'Add Task',
           },
         ]}
+      />
+
+      <WorkspaceTabBar
+        activeTab="Tasks"
+        projectId={projectId}
+        projectTitle={projectTitle}
+        navigation={navigation}
       />
 
       {/* Column Horizontal Swipeable Tabs */}

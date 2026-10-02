@@ -82,16 +82,16 @@ export function formatFileSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-/** Return an emoji icon for a given MIME type */
+/** Return a short text badge for a given MIME type */
 export function getFileIcon(mimeType: string): string {
-  if (mimeType.startsWith('image/')) return '🖼️';
-  if (mimeType === 'application/pdf') return '📄';
-  if (mimeType.includes('word')) return '📝';
-  if (mimeType.includes('excel') || mimeType.includes('spreadsheet')) return '📊';
-  if (mimeType.includes('powerpoint') || mimeType.includes('presentation')) return '📑';
-  if (mimeType === 'text/plain' || mimeType === 'text/markdown') return '📃';
-  if (mimeType.includes('zip')) return '🗜️';
-  return '📁';
+  if (mimeType.startsWith('image/')) return 'IMG';
+  if (mimeType === 'application/pdf') return 'PDF';
+  if (mimeType.includes('word')) return 'DOC';
+  if (mimeType.includes('excel') || mimeType.includes('spreadsheet')) return 'XLS';
+  if (mimeType.includes('powerpoint') || mimeType.includes('presentation')) return 'PPT';
+  if (mimeType === 'text/plain' || mimeType === 'text/markdown') return 'TXT';
+  if (mimeType.includes('zip')) return 'ZIP';
+  return 'FILE';
 }
 
 export const fileService = {
