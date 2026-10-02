@@ -7,6 +7,28 @@ import { chatService } from '../services/chatService';
 
 jest.mock('../services/socketService');
 jest.mock('../services/chatService');
+jest.mock('../services/workspaceService', () => ({
+  workspaceService: {
+    getProjectMembers: jest.fn().mockResolvedValue([
+      {
+        id: 'member-1',
+        projectId: 'proj-1',
+        userId: 'user-me',
+        role: 'LEADER',
+        status: 'ACCEPTED',
+        user: { id: 'user-me', email: 'me@example.com', profile: { fullName: 'Tanvir Hasan' } },
+      },
+      {
+        id: 'member-2',
+        projectId: 'proj-1',
+        userId: 'user-other',
+        role: 'MEMBER',
+        status: 'ACCEPTED',
+        user: { id: 'user-other', email: 'other@example.com', profile: { fullName: 'Mahin Khan' } },
+      },
+    ]),
+  },
+}));
 jest.mock('../context/AuthContext', () => ({
   useAuth: () => ({
     user: { id: 'user-me', email: 'me@example.com' },
@@ -54,8 +76,12 @@ describe('Phase 4 — Team Chat', () => {
     });
     (socketService.onNewMessage as jest.Mock).mockImplementation(() => jest.fn());
     (socketService.onMessageHistory as jest.Mock).mockImplementation(() => jest.fn());
+    (socketService.onNewDirectMessage as jest.Mock).mockImplementation(() => jest.fn());
+    (socketService.onDmHistory as jest.Mock).mockImplementation(() => jest.fn());
     (socketService.joinRoom as jest.Mock).mockImplementation(() => {});
+    (socketService.joinDmRoom as jest.Mock).mockImplementation(() => {});
     (socketService.leaveRoom as jest.Mock).mockImplementation(() => {});
+    (socketService.leaveDmRoom as jest.Mock).mockImplementation(() => {});
     (socketService.sendMessage as jest.Mock).mockImplementation((_pid, _content, cb) => {
       if (cb) {
         cb({
@@ -70,8 +96,23 @@ describe('Phase 4 — Team Chat', () => {
         });
       }
     });
+    (socketService.sendDirectMessage as jest.Mock).mockImplementation((_uid, _content, _pid, cb) => {
+      if (cb) {
+        cb({
+          success: true,
+          message: {
+            id: 'dm-confirmed-123',
+            senderId: 'user-me',
+            recipientId: _uid,
+            content: _content,
+            createdAt: new Date().toISOString(),
+          },
+        });
+      }
+    });
 
     (chatService.getProjectMessages as jest.Mock).mockResolvedValue(mockMessages);
+    (chatService.getDirectMessages as jest.Mock).mockResolvedValue([]);
   });
 
   it('connects to chat, joins room, and loads message history', async () => {
@@ -158,6 +199,48 @@ describe('Phase 4 — Team Chat', () => {
       expect(getByText('Online')).toBeTruthy();
       // Composer draft is preserved
       expect(input.props.value).toBe('Draft message in progress...');
+    });
+  });
+
+  it('switches to direct message with a teammate and sends DM', async () => {
+    const route = { params: { projectId: 'proj-1', projectTitle: 'Drone Fleet Chat' } };
+
+    const { getByText, getByPlaceholderText, getByLabelText } = render(
+      <ThemeProvider>
+        <ChatScreen route={route} />
+      </ThemeProvider>
+    );
+
+    // In mobile view (default jest dimensions), press Switch Chat button to open modal
+    const switchBtn = getByLabelText('Switch Chat');
+    fireEvent.press(switchBtn);
+
+    await waitFor(() => {
+      expect(getByText('Mahin Khan')).toBeTruthy();
+    });
+
+    // Click on Mahin Khan in the DM list
+    fireEvent.press(getByText('Mahin Khan'));
+
+    await waitFor(() => {
+      expect(getByText('Direct Message')).toBeTruthy();
+      expect(socketService.joinDmRoom).toHaveBeenCalledWith('user-other');
+    });
+
+    const dmInput = getByPlaceholderText('Message Mahin...');
+    fireEvent.changeText(dmInput, 'Private direct message to Mahin');
+
+    const sendBtn = getByText('Send');
+    fireEvent.press(sendBtn);
+
+    await waitFor(() => {
+      expect(getByText('Private direct message to Mahin')).toBeTruthy();
+      expect(socketService.sendDirectMessage).toHaveBeenCalledWith(
+        'user-other',
+        'Private direct message to Mahin',
+        'proj-1',
+        expect.any(Function)
+      );
     });
   });
 });

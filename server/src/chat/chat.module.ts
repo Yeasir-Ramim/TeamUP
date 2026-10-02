@@ -3,6 +3,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { ChatGateway } from './chat.gateway';
 import { ChatService } from './chat.service';
 import { ChatController } from './chat.controller';
+import { DirectMessageController } from './direct-message.controller';
 import { PrismaModule } from '../prisma/prisma.module';
 
 @Module({
@@ -16,7 +17,7 @@ import { PrismaModule } from '../prisma/prisma.module';
       signOptions: { expiresIn: '1h' },
     }),
   ],
-  controllers: [ChatController],
+  controllers: [ChatController, DirectMessageController],
   providers: [ChatGateway, ChatService],
   exports: [ChatService],
 })

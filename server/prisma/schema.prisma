@@ -97,6 +97,8 @@ model User {
   pushTokens          PushToken[]
   evaluationsGiven    PeerEvaluation[] @relation("EvaluationsGiven")
   evaluationsReceived PeerEvaluation[] @relation("EvaluationsReceived")
+  directMessagesSent     DirectMessage[]  @relation("DirectMessagesSent")
+  directMessagesReceived DirectMessage[]  @relation("DirectMessagesReceived")
 }
 
 model RefreshToken {
@@ -249,6 +251,21 @@ model Message {
   createdAt DateTime @default(now())
 
   @@index([projectId, createdAt])
+}
+
+model DirectMessage {
+  id          String   @id @default(uuid())
+  senderId    String
+  sender      User     @relation("DirectMessagesSent", fields: [senderId], references: [id], onDelete: Cascade)
+  recipientId String
+  recipient   User     @relation("DirectMessagesReceived", fields: [recipientId], references: [id], onDelete: Cascade)
+  projectId   String?
+  content     String   @db.Text
+  createdAt   DateTime @default(now())
+
+  @@index([senderId, recipientId, createdAt])
+  @@index([recipientId, senderId, createdAt])
+  @@index([projectId])
 }
 
 model ProjectFile {
