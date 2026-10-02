@@ -1,7 +1,9 @@
 import axios, { AxiosError, AxiosInstance, InternalAxiosRequestConfig } from 'axios';
 import * as tokens from '../storage/tokens';
 
-const BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000/api/v1';
+import { apiConfig } from '../services/apiConfig';
+
+const BASE_URL = apiConfig.getApiUrl();
 
 export interface ApiResponse<T = any> {
   success: boolean;
@@ -25,16 +27,26 @@ export const apiClient: AxiosInstance = axios.create({
   baseURL: BASE_URL,
   headers: {
     'Content-Type': 'application/json',
+    'ngrok-skip-browser-warning': 'true',
   },
   timeout: 10000,
 });
 
-// Request interceptor to attach JWT token
+// Sync baseURL if changed at runtime
+apiConfig.subscribe((newUrl) => {
+  apiClient.defaults.baseURL = newUrl;
+});
+
+// Request interceptor to attach JWT token and ensure latest active baseURL
 apiClient.interceptors.request.use(
   async (config: InternalAxiosRequestConfig) => {
+    config.baseURL = apiConfig.getApiUrl();
     const token = await tokens.getAccessToken();
     if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;
+    }
+    if (config.headers) {
+      config.headers['ngrok-skip-browser-warning'] = 'true';
     }
     return config;
   },

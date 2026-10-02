@@ -1,5 +1,6 @@
 import { io, Socket } from 'socket.io-client';
 import { tokenStorage } from './tokenStorage';
+import { apiConfig } from './apiConfig';
 
 export type SocketConnectionStatus = 'disconnected' | 'connecting' | 'connected' | 'reconnecting' | 'error';
 
@@ -27,8 +28,18 @@ class SocketService {
   private historyListeners: Set<(messages: ChatMessage[]) => void> = new Set();
   private status: SocketConnectionStatus = 'disconnected';
 
+  constructor() {
+    apiConfig.subscribe(() => {
+      if (this.socket) {
+        this.socket.disconnect();
+        this.socket = null;
+        this.setStatus('disconnected');
+      }
+    });
+  }
+
   private getBaseUrl(): string {
-    const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000/api/v1';
+    const apiUrl = apiConfig.getApiUrl();
     return apiUrl.replace(/\/api\/v1\/?$/, '');
   }
 

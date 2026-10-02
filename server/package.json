@@ -21,7 +21,8 @@
     "test:ws": "dotenv -e .env.test -- jest --config ./test/jest-e2e.json --runInBand --testRegex \"ws-spec.ts$\"",
     "db:test:up": "docker compose -f docker-compose.test.yml up -d",
     "db:test:down": "docker compose -f docker-compose.test.yml down -v",
-    "db:test:migrate": "dotenv -e .env.test -- prisma db push"
+    "db:test:migrate": "dotenv -e .env.test -- prisma db push",
+    "tunnel": "ngrok http 5001"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",
