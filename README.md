@@ -170,10 +170,15 @@ npm install
 # Development mode with hot-reload
 npm run start:dev
 ```
-- API Base URL: `http://localhost:3000/api/v1`
-- Health Check: `http://localhost:3000/api/v1/health`
+- API Base URL: `http://localhost:5001/api/v1` (or `PORT` in `.env`)
+- Health Check: `http://localhost:5001/api/v1/health`
 
-### 3. Run Tests
+### 3. Seed Database
+```bash
+npm run db:seed
+```
+
+### 4. Run Tests
 ```bash
 # Run unit tests
 npm run test
@@ -181,3 +186,35 @@ npm run test
 # Run end-to-end (e2e) tests
 npm run test:e2e
 ```
+
+---
+
+## Demo & Testing Accounts (Pre-Seeded Data)
+
+The database comes pre-seeded with 200+ authentic Bangladeshi university student accounts across various departments (CSE, SWE, ICT, EEE) and skill proficiencies.
+
+### Universal Credentials
+- **Password for all accounts:** `password123`
+- **Email format:** `<bangladeshi_name>@teamup.com`
+
+### Sample Student Accounts
+
+| Email | Password | Student Name | Department | Primary Skills |
+|---|---|---|---|---|
+| `tanvir@teamup.com` | `password123` | Tanvir Hasan | Computer Science & Engineering | React Native, TypeScript, NestJS |
+| `sadia@teamup.com` | `password123` | Sadia Islam | Software Engineering | UI/UX, Figma, React Native |
+| `rahim@teamup.com` | `password123` | Rahim Ahmed | Computer Science & Engineering | Python, PostgreSQL, Docker |
+| `anika@teamup.com` | `password123` | Anika Tabassum | Computer Science & Engineering | Machine Learning, Python, PyTorch |
+| `tahmid@teamup.com` | `password123` | Tahmid Rahman | Software Engineering | Flutter, Node.js, PostgreSQL |
+| `nusrat@teamup.com` | `password123` | Nusrat Jahan | Information & Communication Technology | TypeScript, React Native, Tailwind CSS |
+| `mehedi@teamup.com` | `password123` | Mehedi Hasan | Computer Science & Engineering | Python, Docker, Kubernetes |
+| `farhan@teamup.com` | `password123` | Farhan Kabir | Computer Science & Engineering | NestJS, PostgreSQL, TypeScript |
+| `sabbir@teamup.com` | `password123` | Sabbir Hossain | Computer Science & Engineering | Node.js, Redis, PostgreSQL |
+| `nabil@teamup.com` | `password123` | Nabil Mahmud | Software Engineering | React Native, Figma, TypeScript |
+| `rifat@teamup.com` | `password123` | Rifat Alom | Computer Science & Engineering | CyberSecurity, Python, Docker |
+| `sakib@teamup.com` | `password123` | Sakib Al Hasan | Software Engineering | Flutter, Firebase, TypeScript |
+| `tasnim@teamup.com` | `password123` | Tasnim Chowdhury | Software Engineering | React Native, TypeScript, Node.js |
+| `sumaiya@teamup.com` | `password123` | Sumaiya Akter | Computer Science & Engineering | UI/UX, Figma, Next.js |
+| `mahin@teamup.com` | `password123` | Mahin Khan | Computer Science & Engineering | React Native, NestJS, PostgreSQL |
+| *(and 260+ more)* | `password123` | *(e.g. imran@, shuvo@, tariq@)* | *(various)* | *(various)* |
+
