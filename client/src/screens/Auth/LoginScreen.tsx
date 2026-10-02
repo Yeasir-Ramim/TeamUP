@@ -19,6 +19,7 @@ import { api, ApiError } from '../../api/client';
 
 import * as apiAuth from '../../api/auth';
 import * as WebBrowser from 'expo-web-browser';
+import { ServerConfigModal } from '../../components/ServerConfigModal';
 
 export const LoginScreen = ({ navigation }: any) => {
   const { colors, typography, spacing, borderRadius } = useTheme();
@@ -29,6 +30,7 @@ export const LoginScreen = ({ navigation }: any) => {
   const [loading, setLoading] = useState(false);
   const [githubLoading, setGithubLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [isServerModalOpen, setIsServerModalOpen] = useState(false);
 
   const handleGitHubLogin = async () => {
     setGithubLoading(true);
@@ -255,9 +257,22 @@ export const LoginScreen = ({ navigation }: any) => {
                 </Text>
               </TouchableOpacity>
             </View>
+
+            <View style={[styles.footerRow, { marginTop: 14 }]}>
+              <TouchableOpacity onPress={() => setIsServerModalOpen(true)}>
+                <Text style={{ color: colors.onSurfaceVariant, fontSize: 12, textDecorationLine: 'underline' }}>
+                  Server Settings / Tunnel URL
+                </Text>
+              </TouchableOpacity>
+            </View>
           </Card>
         </View>
       </ScrollView>
+
+      <ServerConfigModal
+        visible={isServerModalOpen}
+        onClose={() => setIsServerModalOpen(false)}
+      />
     </KeyboardAvoidingView>
   );
 };

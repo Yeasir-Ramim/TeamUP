@@ -41,8 +41,8 @@ async function bootstrap() {
   // Global Exception Filter ({ success: false, error: { code, message } })
   app.useGlobalFilters(new HttpExceptionFilter());
 
-  await app.listen(port);
-  logger.log(`TeamUp Backend API running on: http://localhost:${port}/api/v1`);
+  await app.listen(port, '0.0.0.0');
+  logger.log(`TeamUp Backend API running on: http://0.0.0.0:${port}/api/v1 (accessible locally and via tunnels)`);
 }
 
 void bootstrap();

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -14,11 +14,13 @@ import { useAuth } from '../../context/AuthContext';
 import { AppHeader } from '../../components/AppHeader';
 import { Card } from '../../components/Card';
 import { Button } from '../../components/Button';
+import { ServerConfigModal } from '../../components/ServerConfigModal';
 
 export const SettingsScreen: React.FC = () => {
   const navigation = useNavigation<any>();
   const { colors, typography, spacing, borderRadius, isDark, toggleTheme } = useTheme();
   const { user, logout } = useAuth();
+  const [isServerModalOpen, setIsServerModalOpen] = useState(false);
 
   const handleLogout = () => {
     Alert.alert(
@@ -114,6 +116,31 @@ export const SettingsScreen: React.FC = () => {
         </Card>
 
         <Text style={[styles.sectionTitle, { color: colors.textMuted, fontSize: typography.label.fontSize, marginTop: spacing.lg }]}>
+          NETWORK & SERVER
+        </Text>
+        <Card style={styles.card}>
+          <TouchableOpacity
+            accessibilityRole="button"
+            style={styles.actionRow}
+            onPress={() => setIsServerModalOpen(true)}
+          >
+            <View style={styles.rowLeft}>
+              <View>
+                <Text style={[styles.settingLabel, { color: colors.text, fontSize: typography.body.fontSize }]}>
+                  Server / Tunnel URL
+                </Text>
+                <Text style={[styles.settingSub, { color: colors.textMuted, fontSize: typography.bodySmall.fontSize }]}>
+                  Configure active backend or Ngrok tunnel address
+                </Text>
+              </View>
+            </View>
+            <Text style={[styles.actionText, { color: colors.primary, fontSize: typography.body.fontSize }]}>
+              Configure →
+            </Text>
+          </TouchableOpacity>
+        </Card>
+
+        <Text style={[styles.sectionTitle, { color: colors.textMuted, fontSize: typography.label.fontSize, marginTop: spacing.lg }]}>
           ABOUT
         </Text>
         <Card style={styles.card}>
@@ -146,6 +173,11 @@ export const SettingsScreen: React.FC = () => {
           textStyle={{ color: colors.accent }}
         />
       </ScrollView>
+
+      <ServerConfigModal
+        visible={isServerModalOpen}
+        onClose={() => setIsServerModalOpen(false)}
+      />
     </View>
   );
 };
