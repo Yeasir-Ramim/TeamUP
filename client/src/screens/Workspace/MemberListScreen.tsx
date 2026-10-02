@@ -15,6 +15,7 @@ import { Card } from '../../components/Card';
 import { Badge } from '../../components/Badge';
 import { Button } from '../../components/Button';
 import { StateWrapper, ScreenState } from '../../components/StateWrapper';
+import { WorkspaceTabBar } from '../../components/WorkspaceTabBar';
 import { workspaceService } from '../../services/workspaceService';
 import { ProjectMember } from '../../services/projectService';
 import { useAuth } from '../../context/AuthContext';
@@ -182,7 +183,7 @@ export const MemberListScreen: React.FC<MemberListScreenProps> = ({ route, navig
               {displayName} {isSelf && '(You)'}
             </Text>
             <Text style={[typography.bodySmall, { color: colors.textMuted, marginTop: 2 }]}>
-              {email} • {department}
+              {email} | {department}
             </Text>
           </View>
 
@@ -244,9 +245,17 @@ export const MemberListScreen: React.FC<MemberListScreenProps> = ({ route, navig
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <AppHeader
         title="Team Members"
-        subtitle={`${members.length} total • ${projectTitle}`}
+        subtitle={`${members.length} total | ${projectTitle}`}
         showBack={Boolean(navigation?.canGoBack && navigation.canGoBack())}
         onBack={() => navigation?.goBack?.()}
+      />
+
+      <WorkspaceTabBar
+        activeTab="Team"
+        projectId={projectId}
+        projectTitle={projectTitle}
+        navigation={navigation}
+        isLeader={Boolean(isLeader)}
       />
 
       <StateWrapper

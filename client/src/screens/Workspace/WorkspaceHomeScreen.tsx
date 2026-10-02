@@ -13,6 +13,7 @@ import { Card } from '../../components/Card';
 import { Badge } from '../../components/Badge';
 import { Button } from '../../components/Button';
 import { StateWrapper, ScreenState } from '../../components/StateWrapper';
+import { WorkspaceTabBar } from '../../components/WorkspaceTabBar';
 import { workspaceService, WorkspaceOverview } from '../../services/workspaceService';
 
 export interface WorkspaceHomeScreenProps {
@@ -96,59 +97,26 @@ export const WorkspaceHomeScreen: React.FC<WorkspaceHomeScreenProps> = ({ route,
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <AppHeader
         title="Workspace"
-        subtitle={`${memberCount} members • Active`}
+        subtitle={`${memberCount} members | Active`}
         showBack={true}
         onBack={() => navigation?.goBack?.()}
         actions={[
           {
-            icon: <Text style={{ fontSize: 18 }}>💬</Text>,
+            icon: <Badge label="Chat" variant="secondary" />,
             onPress: () => navigation?.navigate('Chat', { projectId, projectTitle }),
             accessibilityLabel: 'Open chat',
           },
         ]}
       />
 
-      {/* Contextual Sticky Sub-Navigation */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={[styles.tabBar, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}
-        contentContainerStyle={styles.tabBarContent}
-      >
-        <TouchableOpacity style={[styles.tabItem, { borderBottomColor: colors.primary, borderBottomWidth: 2.5 }]}>
-          <Text style={[styles.tabTextActive, { color: colors.primary }]}>Overview</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.tabItem}
-          onPress={() => navigation?.navigate('Kanban', { projectId, projectTitle })}
-        >
-          <Text style={[styles.tabText, { color: colors.textMuted }]}>Tasks</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.tabItem}
-          onPress={() => navigation?.navigate('Chat', { projectId, projectTitle })}
-        >
-          <Text style={[styles.tabText, { color: colors.textMuted }]}>Chat</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.tabItem}
-          onPress={() => navigation?.navigate('Members', { projectId, projectTitle, isLeader })}
-        >
-          <Text style={[styles.tabText, { color: colors.textMuted }]}>Team</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.tabItem}
-          onPress={() => navigation?.navigate('Files', { projectId, projectTitle })}
-        >
-          <Text style={[styles.tabText, { color: colors.textMuted }]}>Files</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.tabItem}
-          onPress={() => navigation?.navigate('Analytics', { projectId, projectTitle })}
-        >
-          <Text style={[styles.tabText, { color: colors.textMuted }]}>Analytics</Text>
-        </TouchableOpacity>
-      </ScrollView>
+      {/* Contextual Sticky Sub-Navigation Bar */}
+      <WorkspaceTabBar
+        activeTab="Overview"
+        projectId={projectId}
+        projectTitle={projectTitle}
+        navigation={navigation}
+        isLeader={isLeader}
+      />
 
       <StateWrapper
         state={screenState}
@@ -186,7 +154,7 @@ export const WorkspaceHomeScreen: React.FC<WorkspaceHomeScreenProps> = ({ route,
                   {projectTitle}
                 </Text>
                 <Text style={[typography.bodySmall, { color: colors.textMuted, marginTop: 2 }]}>
-                  {overview?.project?.domain || 'Workspace'} • {overview?.project?.semester || 'Active'}
+                  {overview?.project?.domain || 'Workspace'} | {overview?.project?.semester || 'Active'}
                 </Text>
               </View>
               <Badge
@@ -216,7 +184,7 @@ export const WorkspaceHomeScreen: React.FC<WorkspaceHomeScreenProps> = ({ route,
                 />
               </View>
               <Text style={[typography.bodySmall, { color: colors.textMuted, marginTop: 4 }]}>
-                {taskMetrics.done} completed • {taskMetrics.inProgress} active • {taskMetrics.testing} testing
+                {taskMetrics.done} completed | {taskMetrics.inProgress} active | {taskMetrics.testing} testing
               </Text>
             </View>
           </Card>
@@ -429,7 +397,7 @@ export const WorkspaceHomeScreen: React.FC<WorkspaceHomeScreenProps> = ({ route,
                 <Text style={[typography.h3, { color: colors.primary, fontWeight: '700', marginTop: 2 }]}>
                   {taskMetrics.total > 0
                     ? `${Math.round((taskMetrics.done / taskMetrics.total) * 100)}%`
-                    : '—'}
+                    : '-'}
                 </Text>
               </View>
               <View style={[styles.metricPill, { backgroundColor: colors.surfaceMuted, borderColor: colors.border }]}>

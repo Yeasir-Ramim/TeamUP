@@ -20,6 +20,7 @@ import { Card } from '../../components/Card';
 import { Badge } from '../../components/Badge';
 import { Button } from '../../components/Button';
 import { StateWrapper, ScreenState } from '../../components/StateWrapper';
+import { WorkspaceTabBar } from '../../components/WorkspaceTabBar';
 import {
   fileService,
   ProjectFile,
@@ -43,7 +44,7 @@ export interface FilesScreenProps {
 
 interface UploadState {
   fileName: string;
-  progress: number; // 0–100
+  progress: number; // 0-100
   status: 'uploading' | 'success' | 'error';
   errorMessage?: string;
 }
@@ -75,7 +76,7 @@ export const FilesScreen: React.FC<FilesScreenProps> = ({ route, navigation }) =
   // Progress bar animation
   const progressAnim = useState(new Animated.Value(0))[0];
 
-  // ─── Data Fetching ────────────────────────────────────────────────────────
+  // --- Data Fetching ---
 
   const fetchFiles = useCallback(() => {
     if (!projectId) return;
@@ -110,7 +111,7 @@ export const FilesScreen: React.FC<FilesScreenProps> = ({ route, navigation }) =
     }
   }, [projectId]);
 
-  // ─── Upload Progress Animation ────────────────────────────────────────────
+  // --- Upload Progress Animation ---
 
   const animateProgress = useCallback((toValue: number) => {
     Animated.timing(progressAnim, {
@@ -120,7 +121,7 @@ export const FilesScreen: React.FC<FilesScreenProps> = ({ route, navigation }) =
     }).start();
   }, [progressAnim]);
 
-  // ─── Upload Handlers ──────────────────────────────────────────────────────
+  // --- Upload Handlers ---
 
   const handlePickImage = async () => {
     setUploadSheetVisible(false);
@@ -220,7 +221,7 @@ export const FilesScreen: React.FC<FilesScreenProps> = ({ route, navigation }) =
     setUploadSheetVisible(true);
   };
 
-  // ─── Delete Handler ───────────────────────────────────────────────────────
+  // --- Delete Handler ---
 
   const handleDeleteFile = (file: ProjectFile) => {
     Alert.alert(
@@ -249,7 +250,7 @@ export const FilesScreen: React.FC<FilesScreenProps> = ({ route, navigation }) =
     );
   };
 
-  // ─── Render Helpers ───────────────────────────────────────────────────────
+  // --- Render Helpers ---
 
   const getCategoryBadgeVariant = (mimeType: string): 'primary' | 'secondary' | 'tertiary' => {
     const cat = getFileCategory(mimeType);
@@ -282,7 +283,7 @@ export const FilesScreen: React.FC<FilesScreenProps> = ({ route, navigation }) =
         <View style={styles.fileRow}>
           {/* Icon */}
           <View style={[styles.fileIconBox, { backgroundColor: colors.surfaceMuted, borderRadius: borderRadius.sm }]}>
-            <Text style={styles.fileIconText}>{getFileIcon(item.mimeType)}</Text>
+            <Text style={[styles.fileIconText, { color: colors.primary }]}>{getFileIcon(item.mimeType)}</Text>
           </View>
 
           {/* Info */}
@@ -305,11 +306,11 @@ export const FilesScreen: React.FC<FilesScreenProps> = ({ route, navigation }) =
               </Text>
             </View>
             <Text style={[typography.bodySmall, { color: colors.textMuted, marginTop: 2 }]}>
-              {uploaderName} · {uploadDate}
+              {uploaderName} | {uploadDate}
             </Text>
           </View>
 
-          {/* Delete — only if owner */}
+          {/* Delete - only if owner */}
           {isOwner && (
             <TouchableOpacity
               onPress={() => handleDeleteFile(item)}
@@ -318,7 +319,7 @@ export const FilesScreen: React.FC<FilesScreenProps> = ({ route, navigation }) =
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               style={styles.deleteButton}
             >
-              <Text style={{ fontSize: 16, color: colors.accent }}>🗑️</Text>
+              <Text style={{ fontSize: 13, color: colors.accent, fontWeight: '700' }}>Delete</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -351,7 +352,7 @@ export const FilesScreen: React.FC<FilesScreenProps> = ({ route, navigation }) =
       >
         <View style={styles.uploadBannerHeader}>
           <Text style={[typography.label, { color: isError ? colors.error : isSuccess ? colors.secondary : colors.primary }]}>
-            {isError ? '❌ Upload Failed' : isSuccess ? '✅ Uploaded!' : '⬆️ Uploading...'}
+            {isError ? 'Upload Failed' : isSuccess ? 'Uploaded' : 'Uploading...'}
           </Text>
           {!isError && !isSuccess && (
             <Text style={[typography.label, { color: colors.primary }]}>
@@ -411,7 +412,7 @@ export const FilesScreen: React.FC<FilesScreenProps> = ({ route, navigation }) =
     );
   };
 
-  // ─── Upload Source Sheet ──────────────────────────────────────────────────
+  // --- Upload Source Sheet ---
 
   const renderUploadSheet = () => (
     <Modal
@@ -445,21 +446,21 @@ export const FilesScreen: React.FC<FilesScreenProps> = ({ route, navigation }) =
             style={[styles.sheetOption, { marginBottom: spacing.sm }]}
             onPress={handlePickImage}
           >
-            <Text style={styles.sheetOptionIcon}>🖼️</Text>
+            <Text style={[styles.sheetOptionIcon, { color: colors.primary }]}>[IMG]</Text>
             <View style={styles.sheetOptionText}>
               <Text style={[typography.h3, { color: colors.text }]}>Image</Text>
               <Text style={[typography.bodySmall, { color: colors.textMuted }]}>
-                JPEG, PNG, GIF, WebP — up to 25 MB
+                JPEG, PNG, GIF, WebP - up to 25 MB
               </Text>
             </View>
           </Card>
 
           <Card style={styles.sheetOption} onPress={handlePickDocument}>
-            <Text style={styles.sheetOptionIcon}>📄</Text>
+            <Text style={[styles.sheetOptionIcon, { color: colors.secondary }]}>[DOC]</Text>
             <View style={styles.sheetOptionText}>
               <Text style={[typography.h3, { color: colors.text }]}>Document</Text>
               <Text style={[typography.bodySmall, { color: colors.textMuted }]}>
-                PDF, Word, Excel, PowerPoint, text, zip — up to 25 MB
+                PDF, Word, Excel, PowerPoint, text, zip - up to 25 MB
               </Text>
             </View>
           </Card>
@@ -475,7 +476,7 @@ export const FilesScreen: React.FC<FilesScreenProps> = ({ route, navigation }) =
     </Modal>
   );
 
-  // ─── Main Render ──────────────────────────────────────────────────────────
+  // --- Main Render ---
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -486,11 +487,18 @@ export const FilesScreen: React.FC<FilesScreenProps> = ({ route, navigation }) =
         onBack={() => navigation?.goBack?.()}
         actions={[
           {
-            icon: <Text style={{ fontSize: 20 }}>⬆️</Text>,
+            icon: <Text style={{ fontSize: 13, fontWeight: '700', color: colors.primary }}>+ Upload</Text>,
             onPress: () => setUploadSheetVisible(true),
             accessibilityLabel: 'Upload file',
           },
         ]}
+      />
+
+      <WorkspaceTabBar
+        activeTab="Files"
+        projectId={projectId}
+        projectTitle={projectTitle}
+        navigation={navigation}
       />
 
       {/* Active upload banner */}
@@ -563,7 +571,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginRight: 12,
   },
-  fileIconText: { fontSize: 22 },
+  fileIconText: { fontSize: 12, fontWeight: '700' },
   fileInfo: { flex: 1, marginRight: 8 },
   fileMeta: {
     flexDirection: 'row',
@@ -613,7 +621,8 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   sheetOptionIcon: {
-    fontSize: 28,
+    fontSize: 16,
+    fontWeight: '700',
     marginRight: 14,
   },
   sheetOptionText: {
