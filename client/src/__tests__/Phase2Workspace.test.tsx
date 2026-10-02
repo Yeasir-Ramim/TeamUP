@@ -138,4 +138,47 @@ describe('Phase 2 — Team Workspace Shell', () => {
       expect(getAllByText(/ACCEPTED/).length).toBe(2);
     });
   });
+
+  it('MemberListScreen renders pending applications with Accept and Reject buttons for the leader', async () => {
+    const mockMembersWithPending = [
+      { id: 'm-1', userId: 'user-1', role: 'LEADER' as const, status: 'ACCEPTED' as const },
+      {
+        id: 'm-pending',
+        userId: 'user-applicant',
+        role: 'MEMBER' as const,
+        status: 'PENDING' as const,
+        user: {
+          id: 'user-applicant',
+          email: 'applicant@example.com',
+          profile: { fullName: 'Applicant User', department: 'Computer Science' },
+        },
+      },
+    ];
+
+    (workspaceService.getProjectMembers as jest.Mock).mockResolvedValueOnce(mockMembersWithPending);
+    (workspaceService.updateMember as jest.Mock).mockResolvedValueOnce({});
+
+    const route = { params: { projectId: 'proj-1', isLeader: true } };
+
+    const { getByText } = render(
+      <ThemeProvider>
+        <MemberListScreen route={route} navigation={mockNavigation} />
+      </ThemeProvider>
+    );
+
+    await waitFor(() => {
+      expect(getByText(/Applicant User/)).toBeTruthy();
+      expect(getByText('Accept')).toBeTruthy();
+      expect(getByText('Reject')).toBeTruthy();
+    });
+
+    const acceptBtn = getByText('Accept');
+    fireEvent.press(acceptBtn);
+
+    await waitFor(() => {
+      expect(workspaceService.updateMember).toHaveBeenCalledWith('proj-1', 'm-pending', {
+        status: 'ACCEPTED',
+      });
+    });
+  });
 });

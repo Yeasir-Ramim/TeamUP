@@ -8,6 +8,7 @@ import {
   Modal,
   TextInput,
   TouchableOpacity,
+  Platform,
 } from 'react-native';
 import { useTheme } from '../../theme/ThemeContext';
 import { AppHeader } from '../../components/AppHeader';
@@ -69,8 +70,15 @@ export const ProjectDetailScreen: React.FC<ProjectDetailScreenProps> = ({ route,
     fetchProjectDetails();
   }, [fetchProjectDetails]);
 
-  const isCreator = user?.id === project?.creatorId;
-  const membership = project?.members?.find((m) => m.userId === user?.id);
+  const currentUserId = user?.userId || user?.id;
+  const isCreator =
+    (currentUserId && project?.creatorId === currentUserId) ||
+    (user?.email && project?.creator?.email && user.email.toLowerCase() === project.creator.email.toLowerCase());
+  const membership = project?.members?.find(
+    (m) =>
+      (currentUserId && m.userId === currentUserId) ||
+      (user?.email && m.user?.email && m.user.email.toLowerCase() === user.email.toLowerCase())
+  );
   const isMember = membership?.status === 'ACCEPTED' || isCreator;
   const isPending = membership?.status === 'PENDING' || joinStatus === 'PENDING';
 
@@ -81,10 +89,18 @@ export const ProjectDetailScreen: React.FC<ProjectDetailScreenProps> = ({ route,
       await projectService.joinProject(project.id);
       setJoinStatus('PENDING');
       setIsApplySheetOpen(false);
-      Alert.alert('Application Sent', 'Your application to join this project has been submitted!');
-      fetchProjectDetails();
+      await fetchProjectDetails();
+      if (Platform.OS === 'web') {
+        console.log('Application to join project submitted successfully');
+      } else {
+        Alert.alert('Application Sent', 'Your application to join this project has been submitted!');
+      }
     } catch (err: any) {
-      Alert.alert('Error', err?.message || 'Could not submit application.');
+      if (Platform.OS === 'web') {
+        window.alert(err?.message || 'Could not submit application.');
+      } else {
+        Alert.alert('Error', err?.message || 'Could not submit application.');
+      }
     } finally {
       setIsJoining(false);
     }
