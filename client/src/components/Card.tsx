@@ -21,6 +21,8 @@ export interface CardProps {
   testID?: string;
 }
 
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+
 export const Card: React.FC<CardProps> = ({
   children,
   onPress,
@@ -77,48 +79,50 @@ export const Card: React.FC<CardProps> = ({
     }
   };
 
-  const cardContent = (
-    <View
-      testID={testID}
-      style={[
-        styles.card,
-        {
-          backgroundColor: getBackgroundColor(),
-          borderRadius: borderRadius.md,
-          borderColor: colors.border,
-          borderWidth: 1,
-          padding: spacing.base,
-        },
-        variant === 'surface' ? elevation.card : {},
-        style,
-      ]}
-    >
-      {React.Children.map(children, (child) => {
-        if (typeof child === 'string') {
-          if (!child.trim()) return null;
-          return <Text style={{ color: colors.text }}>{child}</Text>;
-        }
-        return child;
-      })}
-    </View>
-  );
+  const cardStyle = [
+    styles.card,
+    {
+      backgroundColor: getBackgroundColor(),
+      borderRadius: borderRadius.md,
+      borderColor: colors.border,
+      borderWidth: 1,
+      padding: spacing.base,
+    },
+    variant === 'surface' ? elevation.card : {},
+    style,
+  ];
+
+  const content = React.Children.map(children, (child) => {
+    if (typeof child === 'string') {
+      if (!child.trim()) return null;
+      return <Text style={{ color: colors.text }}>{child}</Text>;
+    }
+    return child;
+  });
 
   if (!onPress) {
-    return cardContent;
+    return (
+      <View testID={testID} style={cardStyle}>
+        {content}
+      </View>
+    );
   }
 
   return (
-    <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
-      <Pressable
-        accessibilityRole={Platform.OS === 'web' ? undefined : 'button'}
-        hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
-        onPressIn={handlePressIn}
-        onPressOut={handlePressOut}
-        onPress={handlePress}
-      >
-        {cardContent}
-      </Pressable>
-    </Animated.View>
+    <AnimatedPressable
+      testID={testID}
+      accessibilityRole={Platform.OS === 'web' ? undefined : 'button'}
+      hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
+      onPressIn={handlePressIn}
+      onPressOut={handlePressOut}
+      onPress={handlePress}
+      style={[
+        cardStyle,
+        { transform: [{ scale: scaleAnim }] },
+      ]}
+    >
+      {content}
+    </AnimatedPressable>
   );
 };
 
