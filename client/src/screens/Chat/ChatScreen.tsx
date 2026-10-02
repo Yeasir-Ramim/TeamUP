@@ -18,7 +18,12 @@ import { useTheme } from '../../theme/ThemeContext';
 import { AppHeader } from '../../components/AppHeader';
 import { Badge } from '../../components/Badge';
 import { StateWrapper, ScreenState } from '../../components/StateWrapper';
-import { socketService, ChatMessage, SocketConnectionStatus } from '../../services/socketService';
+import {
+  socketService,
+  ChatMessage,
+  DirectMessagePayload,
+  SocketConnectionStatus,
+} from '../../services/socketService';
 import { chatService } from '../../services/chatService';
 import { workspaceService } from '../../services/workspaceService';
 import { ProjectMember } from '../../services/projectService';
@@ -38,6 +43,17 @@ interface DisplayMessage extends ChatMessage {
   isPending?: boolean;
 }
 
+export type ActiveChat =
+  | { type: 'channel'; id: string; title: string }
+  | {
+      type: 'dm';
+      targetUserId: string;
+      targetUserName: string;
+      targetUserAvatar?: string;
+      role?: string;
+      department?: string;
+    };
+
 export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => {
   const { colors, typography, spacing, borderRadius } = useTheme();
   const { user } = useAuth();
@@ -47,7 +63,15 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
   const { width } = useWindowDimensions();
   const isWide = width >= 768;
 
-  const [messages, setMessages] = useState<DisplayMessage[]>([]);
+  const [activeChat, setActiveChat] = useState<ActiveChat>({
+    type: 'channel',
+    id: projectId,
+    title: projectTitle,
+  });
+
+  const [channelMessages, setChannelMessages] = useState<DisplayMessage[]>([]);
+  const [dmMessages, setDmMessages] = useState<Record<string, DisplayMessage[]>>({});
+  const [unreadDms, setUnreadDms] = useState<Record<string, number>>({});
   const [members, setMembers] = useState<ProjectMember[]>([]);
   const [showMobileMembers, setShowMobileMembers] = useState(false);
   const [inputText, setInputText] = useState('');
@@ -56,6 +80,11 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
   const [connectionStatus, setConnectionStatus] = useState<SocketConnectionStatus>('disconnected');
 
   const flatListRef = useRef<FlatList>(null);
+  const activeChatRef = useRef<ActiveChat>(activeChat);
+
+  useEffect(() => {
+    activeChatRef.current = activeChat;
+  }, [activeChat]);
 
   useEffect(() => {
     if (!projectId) return;
@@ -74,6 +103,48 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
     [members]
   );
 
+  const currentMessages = useMemo(() => {
+    if (activeChat.type === 'channel') {
+      return channelMessages;
+    }
+    return dmMessages[activeChat.targetUserId] || [];
+  }, [activeChat, channelMessages, dmMessages]);
+
+  const currentScreenState = useMemo<ScreenState>(() => {
+    if (screenState === 'loading') return 'loading';
+    if (errorMessage) return 'error';
+    return currentMessages.length > 0 ? 'populated' : 'empty';
+  }, [screenState, errorMessage, currentMessages]);
+
+  const switchConversation = useCallback(
+    (target: ActiveChat) => {
+      setActiveChat(target);
+      if (target.type === 'dm') {
+        setUnreadDms((prev) => ({ ...prev, [target.targetUserId]: 0 }));
+        socketService.joinDmRoom(target.targetUserId);
+
+        if (!dmMessages[target.targetUserId] || dmMessages[target.targetUserId].length === 0) {
+          chatService
+            .getDirectMessages(target.targetUserId)
+            .then((history) => {
+              if (Array.isArray(history)) {
+                setDmMessages((prev) => ({
+                  ...prev,
+                  [target.targetUserId]: history as DisplayMessage[],
+                }));
+              }
+            })
+            .catch((err) => {
+              console.warn('Failed to fetch direct messages via REST:', err.message);
+            });
+        }
+      } else {
+        socketService.joinRoom(projectId);
+      }
+    },
+    [projectId, dmMessages]
+  );
+
   // Initialize socket connection & message history
   const initChat = useCallback(() => {
     if (!projectId) return;
@@ -81,7 +152,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
     chatService
       .getProjectMessages(projectId)
       .then((history) => {
-        setMessages(history || []);
+        setChannelMessages(history || []);
         setScreenState(history && history.length > 0 ? 'populated' : 'empty');
         setErrorMessage(undefined);
       })
@@ -105,14 +176,18 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
     const unsubStatus = socketService.onStatusChange((status) => {
       setConnectionStatus(status);
       if (status === 'connected') {
-        socketService.joinRoom(projectId);
+        if (activeChatRef.current.type === 'channel') {
+          socketService.joinRoom(projectId);
+        } else {
+          socketService.joinDmRoom(activeChatRef.current.targetUserId);
+        }
       }
     });
 
     const unsubNewMessage = socketService.onNewMessage((newMsg) => {
       if (newMsg.projectId !== projectId) return;
 
-      setMessages((prev) => {
+      setChannelMessages((prev) => {
         const pendingIndex = prev.findIndex(
           (m) => m.isPending && m.content === newMsg.content && m.senderId === newMsg.senderId
         );
@@ -130,15 +205,17 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
         return [...prev, newMsg];
       });
 
-      setScreenState('populated');
-      setTimeout(() => {
-        flatListRef.current?.scrollToEnd({ animated: true });
-      }, 100);
+      if (activeChatRef.current.type === 'channel') {
+        setScreenState('populated');
+        setTimeout(() => {
+          flatListRef.current?.scrollToEnd({ animated: true });
+        }, 100);
+      }
     });
 
     const unsubHistory = socketService.onMessageHistory((history) => {
       if (Array.isArray(history)) {
-        setMessages((prev) => {
+        setChannelMessages((prev) => {
           const existingIds = new Set(prev.map((m) => m.id));
           const toAdd = history.filter((m) => !existingIds.has(m.id));
           const merged = [...prev, ...toAdd].sort(
@@ -150,13 +227,62 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
       }
     });
 
+    const unsubNewDm = socketService.onNewDirectMessage((newDm: DirectMessagePayload) => {
+      const currentUserId = user?.userId || user?.id;
+      const partnerId = newDm.senderId === currentUserId ? newDm.recipientId : newDm.senderId;
+
+      setDmMessages((prev) => {
+        const list = prev[partnerId] || [];
+        const pendingIndex = list.findIndex(
+          (m) => m.isPending && m.content === newDm.content && m.senderId === newDm.senderId
+        );
+
+        if (pendingIndex !== -1) {
+          const updated = [...list];
+          updated[pendingIndex] = newDm as DisplayMessage;
+          return { ...prev, [partnerId]: updated };
+        }
+
+        if (list.some((m) => m.id === newDm.id)) {
+          return prev;
+        }
+
+        return { ...prev, [partnerId]: [...list, newDm as DisplayMessage] };
+      });
+
+      if (
+        activeChatRef.current.type === 'dm' &&
+        activeChatRef.current.targetUserId === partnerId
+      ) {
+        setTimeout(() => {
+          flatListRef.current?.scrollToEnd({ animated: true });
+        }, 100);
+      } else if (newDm.senderId !== currentUserId) {
+        setUnreadDms((prev) => ({
+          ...prev,
+          [partnerId]: (prev[partnerId] || 0) + 1,
+        }));
+      }
+    });
+
+    const unsubDmHistory = socketService.onDmHistory((payload) => {
+      if (payload && Array.isArray(payload.messages)) {
+        setDmMessages((prev) => ({
+          ...prev,
+          [payload.targetUserId]: payload.messages as DisplayMessage[],
+        }));
+      }
+    });
+
     return () => {
-      unsubStatus();
-      unsubNewMessage();
-      unsubHistory();
+      unsubStatus?.();
+      unsubNewMessage?.();
+      unsubHistory?.();
+      unsubNewDm?.();
+      unsubDmHistory?.();
       socketService.leaveRoom(projectId);
     };
-  }, [projectId, initChat]);
+  }, [projectId, initChat, user]);
 
   const handleSendMessage = () => {
     const trimmed = inputText.trim();
@@ -170,36 +296,81 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
       }
     }
 
+    const currentUserId = user?.userId || user?.id || 'me';
     const tempId = `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-    const optimisticMessage: DisplayMessage = {
-      id: tempId,
-      projectId,
-      senderId: user?.id || 'me',
-      content: trimmed,
-      createdAt: new Date().toISOString(),
-      isPending: true,
-      sender: {
-        id: user?.id || 'me',
-        email: user?.email || '',
-      },
-    };
 
-    setMessages((prev) => [...prev, optimisticMessage]);
-    setScreenState('populated');
-    setInputText('');
+    if (activeChat.type === 'channel') {
+      const optimisticMessage: DisplayMessage = {
+        id: tempId,
+        projectId,
+        senderId: currentUserId,
+        content: trimmed,
+        createdAt: new Date().toISOString(),
+        isPending: true,
+        sender: {
+          id: currentUserId,
+          email: user?.email || '',
+        },
+      };
 
-    setTimeout(() => {
-      flatListRef.current?.scrollToEnd({ animated: true });
-    }, 50);
+      setChannelMessages((prev) => [...prev, optimisticMessage]);
+      setInputText('');
 
-    socketService.sendMessage(projectId, trimmed, (response) => {
-      if (response && response.success && response.message) {
-        const confirmedMsg = response.message;
-        setMessages((prev) =>
-          prev.map((m) => (m.id === tempId ? { ...confirmedMsg, isPending: false } : m))
-        );
-      }
-    });
+      setTimeout(() => {
+        flatListRef.current?.scrollToEnd({ animated: true });
+      }, 50);
+
+      socketService.sendMessage(projectId, trimmed, (response) => {
+        if (response && response.success && response.message) {
+          const confirmedMsg = response.message;
+          setChannelMessages((prev) =>
+            prev.map((m) => (m.id === tempId ? { ...confirmedMsg, isPending: false } : m))
+          );
+        }
+      });
+    } else {
+      const targetUserId = activeChat.targetUserId;
+      const optimisticDm: DisplayMessage = {
+        id: tempId,
+        projectId,
+        senderId: currentUserId,
+        content: trimmed,
+        createdAt: new Date().toISOString(),
+        isPending: true,
+        sender: {
+          id: currentUserId,
+          email: user?.email || '',
+          profile: {
+            fullName: user?.fullName || 'You',
+          },
+        },
+      };
+
+      setDmMessages((prev) => ({
+        ...prev,
+        [targetUserId]: [...(prev[targetUserId] || []), optimisticDm],
+      }));
+      setInputText('');
+
+      setTimeout(() => {
+        flatListRef.current?.scrollToEnd({ animated: true });
+      }, 50);
+
+      socketService.sendDirectMessage(targetUserId, trimmed, projectId, (response) => {
+        if (response && response.success && response.message) {
+          const confirmedDm = response.message as DisplayMessage;
+          setDmMessages((prev) => {
+            const list = prev[targetUserId] || [];
+            return {
+              ...prev,
+              [targetUserId]: list.map((m) =>
+                m.id === tempId ? { ...confirmedDm, isPending: false } : m
+              ),
+            };
+          });
+        }
+      });
+    }
   };
 
   const handleAttachment = () => {
@@ -216,7 +387,8 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
       (currentUserId && item.senderId === currentUserId) ||
       (user?.email && item.sender?.email && user.email.toLowerCase() === item.sender.email.toLowerCase()) ||
       item.senderId === 'me';
-    const senderName = item.sender?.profile?.fullName || item.sender?.email || (isOwn ? 'You' : 'Teammate');
+    const senderName =
+      item.sender?.profile?.fullName || item.sender?.email || (isOwn ? 'You' : 'Teammate');
     const timeFormatted = item.createdAt
       ? new Date(item.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       : '';
@@ -286,7 +458,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
                   },
                 ]}
               >
-                {timeFormatted} {item.isPending ? '• Sending...' : ''}
+                {timeFormatted} {item.isPending ? '(Sending...)' : ''}
               </Text>
             </View>
           </View>
@@ -296,12 +468,27 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
   };
 
   const renderSidebar = () => {
+    const currentUserId = user?.userId || user?.id;
+    const dmTeammates = confirmedMembers.filter((m) => {
+      const isSelf =
+        (currentUserId && m.userId === currentUserId) ||
+        (user?.email && m.user?.email && m.user.email.toLowerCase() === user.email.toLowerCase());
+      return !isSelf;
+    });
+
+    const isChannelActive = activeChat.type === 'channel';
+
     return (
-      <View style={[styles.sidebarContainer, { backgroundColor: colors.surface, borderRightColor: colors.border }]}>
+      <View
+        style={[
+          styles.sidebarContainer,
+          { backgroundColor: colors.surface, borderRightColor: colors.border },
+        ]}
+      >
         {/* Channel Header */}
         <View style={styles.sidebarHeader}>
           <Text style={[typography.label, { color: colors.textMuted, letterSpacing: 0.8 }]}>
-            CONVERSATION
+            CHANNELS
           </Text>
         </View>
 
@@ -310,50 +497,76 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
           style={[
             styles.channelItem,
             {
-              backgroundColor: colors.primarySoft,
-              borderColor: colors.border,
+              backgroundColor: isChannelActive ? colors.primarySoft : 'transparent',
+              borderColor: isChannelActive ? colors.primary : colors.border,
               borderRadius: borderRadius.md,
             },
           ]}
+          onPress={() =>
+            switchConversation({ type: 'channel', id: projectId, title: projectTitle })
+          }
           activeOpacity={0.8}
         >
-          <View style={[styles.channelAvatar, { backgroundColor: colors.primary }]}>
-            <Text style={{ color: colors.onPrimary, fontWeight: '700', fontSize: 14 }}>
+          <View
+            style={[
+              styles.channelAvatar,
+              { backgroundColor: isChannelActive ? colors.primary : colors.surfaceMuted },
+            ]}
+          >
+            <Text
+              style={{
+                color: isChannelActive ? colors.onPrimary : colors.text,
+                fontWeight: '700',
+                fontSize: 14,
+              }}
+            >
               #
             </Text>
           </View>
           <View style={{ flex: 1, marginLeft: 10 }}>
-            <Text style={[typography.body, { color: colors.text, fontWeight: '700' }]} numberOfLines={1}>
+            <Text
+              style={[
+                typography.body,
+                { color: colors.text, fontWeight: isChannelActive ? '700' : '600' },
+              ]}
+              numberOfLines={1}
+            >
               Team Chat
             </Text>
             <Text style={[typography.bodySmall, { color: colors.textMuted, fontSize: 11 }]}>
               {confirmedMembers.length > 0 ? `${confirmedMembers.length} members` : 'Project Channel'}
             </Text>
           </View>
-          <View style={[styles.activeIndicator, { backgroundColor: colors.primary }]} />
+          {isChannelActive && (
+            <View style={[styles.activeIndicator, { backgroundColor: colors.primary }]} />
+          )}
         </TouchableOpacity>
 
-        {/* Team Members Roster */}
+        {/* Direct Messages Header */}
         <View style={[styles.sidebarHeader, { marginTop: 20 }]}>
           <Text style={[typography.label, { color: colors.textMuted, letterSpacing: 0.8 }]}>
-            TEAM MEMBERS ({confirmedMembers.length})
+            DIRECT MESSAGES ({dmTeammates.length})
           </Text>
         </View>
 
         <ScrollView style={styles.membersList} showsVerticalScrollIndicator={false}>
-          {confirmedMembers.length === 0 ? (
-            <Text style={[typography.bodySmall, { color: colors.textMuted, paddingHorizontal: 12, paddingVertical: 8 }]}>
-              No team members joined yet.
+          {dmTeammates.length === 0 ? (
+            <Text
+              style={[
+                typography.bodySmall,
+                { color: colors.textMuted, paddingHorizontal: 12, paddingVertical: 8 },
+              ]}
+            >
+              No other teammates joined yet.
             </Text>
           ) : (
-            confirmedMembers.map((member) => {
-              const currentUserId = user?.userId || user?.id;
-              const isSelf =
-                (currentUserId && member.userId === currentUserId) ||
-                (user?.email && member.user?.email && member.user.email.toLowerCase() === user.email.toLowerCase());
+            dmTeammates.map((member) => {
               const name = member.user?.profile?.fullName || member.user?.email || 'Team Member';
               const department = member.user?.profile?.department || 'Department N/A';
               const isLeader = member.role === 'LEADER';
+              const isDmActive =
+                activeChat.type === 'dm' && activeChat.targetUserId === member.userId;
+              const unreadCount = member.userId ? unreadDms[member.userId] || 0 : 0;
 
               return (
                 <TouchableOpacity
@@ -361,12 +574,22 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
                   style={[
                     styles.memberRowItem,
                     {
+                      backgroundColor: isDmActive ? colors.primarySoft : 'transparent',
                       borderRadius: borderRadius.md,
+                      borderColor: isDmActive ? colors.primary : 'transparent',
+                      borderWidth: isDmActive ? 1 : 0,
                     },
                   ]}
                   onPress={() => {
                     if (member.userId) {
-                      navigation?.navigate('UserProfile', { userId: member.userId });
+                      switchConversation({
+                        type: 'dm',
+                        targetUserId: member.userId,
+                        targetUserName: name,
+                        targetUserAvatar: member.user?.profile?.avatarUrl,
+                        role: member.role,
+                        department,
+                      });
                     }
                   }}
                   activeOpacity={0.7}
@@ -398,11 +621,15 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
                     <Text
                       style={[
                         typography.body,
-                        { color: colors.text, fontWeight: isSelf ? '700' : '600', fontSize: 13 },
+                        {
+                          color: colors.text,
+                          fontWeight: isDmActive ? '700' : '600',
+                          fontSize: 13,
+                        },
                       ]}
                       numberOfLines={1}
                     >
-                      {name} {isSelf ? '(You)' : ''}
+                      {name}
                     </Text>
                     <Text
                       style={[typography.bodySmall, { color: colors.textMuted, fontSize: 11 }]}
@@ -411,6 +638,22 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
                       {department}
                     </Text>
                   </View>
+
+                  {unreadCount > 0 ? (
+                    <View
+                      style={{
+                        backgroundColor: '#EF4444',
+                        borderRadius: 10,
+                        paddingHorizontal: 6,
+                        paddingVertical: 1,
+                        marginRight: 4,
+                      }}
+                    >
+                      <Text style={{ color: '#FFFFFF', fontSize: 10, fontWeight: '700' }}>
+                        {unreadCount}
+                      </Text>
+                    </View>
+                  ) : null}
 
                   <Badge
                     label={isLeader ? 'Leader' : 'Member'}
@@ -421,6 +664,36 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
             })
           )}
         </ScrollView>
+
+        {/* Current User Footer */}
+        <View
+          style={[
+            styles.currentUserFooter,
+            { borderTopColor: colors.border, backgroundColor: colors.surfaceMuted },
+          ]}
+        >
+          <View
+            style={[
+              styles.miniSelfAvatar,
+              { backgroundColor: colors.primary, borderColor: colors.border },
+            ]}
+          >
+            <Text style={{ color: colors.onPrimary, fontWeight: '700', fontSize: 11 }}>
+              {(user?.fullName || user?.email || 'Me').charAt(0).toUpperCase()}
+            </Text>
+          </View>
+          <View style={{ flex: 1, marginLeft: 8 }}>
+            <Text
+              style={[typography.label, { color: colors.text, fontWeight: '700', fontSize: 12 }]}
+              numberOfLines={1}
+            >
+              {user?.fullName || user?.email || 'Logged In'} (You)
+            </Text>
+            <Text style={[typography.bodySmall, { color: colors.textMuted, fontSize: 10 }]}>
+              Personal Inbox Active
+            </Text>
+          </View>
+        </View>
       </View>
     );
   };
@@ -432,22 +705,32 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
       keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
     >
       <AppHeader
-        title={projectTitle}
-        subtitle="Team Chat"
+        title={activeChat.type === 'channel' ? projectTitle : activeChat.targetUserName}
+        subtitle={activeChat.type === 'channel' ? 'Team Chat' : 'Direct Message'}
         showBack={Boolean(navigation?.canGoBack && navigation.canGoBack())}
-        onBack={() => navigation?.goBack?.()}
+        onBack={() => {
+          if (activeChat.type === 'dm') {
+            switchConversation({ type: 'channel', id: projectId, title: projectTitle });
+          } else {
+            navigation?.goBack?.();
+          }
+        }}
         actions={[
           ...(!isWide
             ? [
                 {
                   icon: (
                     <Badge
-                      label={`Team (${confirmedMembers.length})`}
+                      label={
+                        activeChat.type === 'channel'
+                          ? `Inbox (${confirmedMembers.length})`
+                          : `DM: ${activeChat.targetUserName.split(' ')[0]}`
+                      }
                       variant="secondary"
                     />
                   ),
                   onPress: () => setShowMobileMembers(true),
-                  accessibilityLabel: 'View Team Members',
+                  accessibilityLabel: 'Switch Chat',
                 },
               ]
             : []),
@@ -469,6 +752,17 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
             onPress: () => {},
             accessibilityLabel: 'Connection Status',
           },
+          ...(activeChat.type === 'dm'
+            ? [
+                {
+                  icon: <Badge label="Profile" variant="tertiary" />,
+                  onPress: () => {
+                    navigation?.navigate('UserProfile', { userId: activeChat.targetUserId });
+                  },
+                  accessibilityLabel: 'View Profile',
+                },
+              ]
+            : []),
         ]}
       />
 
@@ -480,23 +774,36 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
         <View style={styles.chatPane}>
           {/* Date Divider Badge */}
           <View style={styles.dateSeparatorRow}>
-            <View style={[styles.dateBadge, { backgroundColor: colors.surfaceMuted, borderColor: colors.border }]}>
-              <Text style={[typography.label, { color: colors.textMuted, fontSize: 10 }]}>TODAY</Text>
+            <View
+              style={[
+                styles.dateBadge,
+                { backgroundColor: colors.surfaceMuted, borderColor: colors.border },
+              ]}
+            >
+              <Text style={[typography.label, { color: colors.textMuted, fontSize: 10 }]}>
+                {activeChat.type === 'channel'
+                  ? 'TODAY'
+                  : `DIRECT: ${activeChat.targetUserName.toUpperCase()}`}
+              </Text>
             </View>
           </View>
 
           {/* Message List */}
           <View style={styles.messageListContainer}>
             <StateWrapper
-              state={screenState}
+              state={currentScreenState}
               errorMessage={errorMessage}
               onRetry={initChat}
-              emptyTitle="No Messages Yet"
-              emptySubtitle="Say hello to start communicating with your project team!"
+              emptyTitle={activeChat.type === 'channel' ? 'No Messages Yet' : activeChat.targetUserName}
+              emptySubtitle={
+                activeChat.type === 'channel'
+                  ? 'Say hello to start communicating with your project team!'
+                  : `This is the start of your direct conversation with ${activeChat.targetUserName}. Messages are private.`
+              }
             >
               <FlatList
                 ref={flatListRef}
-                data={messages}
+                data={currentMessages}
                 keyExtractor={(item) => item.id}
                 renderItem={renderMessageItem}
                 contentContainerStyle={{ padding: spacing.screenPadding, paddingBottom: 16 }}
@@ -539,7 +846,11 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
                   paddingVertical: spacing.sm,
                 },
               ]}
-              placeholder="Type a message..."
+              placeholder={
+                activeChat.type === 'channel'
+                  ? 'Type a message...'
+                  : `Message ${activeChat.targetUserName.split(' ')[0]}...`
+              }
               placeholderTextColor={colors.textMuted}
               value={inputText}
               onChangeText={setInputText}
@@ -576,7 +887,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
         </View>
       </View>
 
-      {/* Mobile Members Sheet Modal */}
+      {/* Mobile Members & Direct Messages Sheet Modal */}
       {!isWide && (
         <Modal
           visible={showMobileMembers}
@@ -585,10 +896,15 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
           onRequestClose={() => setShowMobileMembers(false)}
         >
           <View style={styles.modalBackdrop}>
-            <View style={[styles.modalCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <View
+              style={[
+                styles.modalCard,
+                { backgroundColor: colors.surface, borderColor: colors.border },
+              ]}
+            >
               <View style={[styles.modalHeaderRow, { borderBottomColor: colors.border }]}>
                 <Text style={[typography.h3, { color: colors.text }]}>
-                  Team Members ({confirmedMembers.length})
+                  Conversations & Inbox
                 </Text>
                 <TouchableOpacity
                   onPress={() => setShowMobileMembers(false)}
@@ -599,66 +915,197 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
                   </Text>
                 </TouchableOpacity>
               </View>
-              <ScrollView style={{ maxHeight: 420 }} showsVerticalScrollIndicator={false}>
-                {confirmedMembers.map((member) => {
-                  const currentUserId = user?.userId || user?.id;
-                  const isSelf =
-                    (currentUserId && member.userId === currentUserId) ||
-                    (user?.email && member.user?.email && member.user.email.toLowerCase() === user.email.toLowerCase());
-                  const name = member.user?.profile?.fullName || member.user?.email || 'Team Member';
-                  const department = member.user?.profile?.department || 'Department N/A';
-                  const isLeader = member.role === 'LEADER';
 
-                  return (
-                    <TouchableOpacity
-                      key={member.id}
-                      style={[styles.memberRowItem, { paddingHorizontal: 16 }]}
-                      onPress={() => {
-                        setShowMobileMembers(false);
-                        if (member.userId) {
-                          navigation?.navigate('UserProfile', { userId: member.userId });
-                        }
-                      }}
+              <ScrollView style={{ maxHeight: 460 }} showsVerticalScrollIndicator={false}>
+                {/* Channel Section */}
+                <View style={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 6 }}>
+                  <Text
+                    style={[
+                      typography.label,
+                      { color: colors.textMuted, letterSpacing: 0.8, fontSize: 11 },
+                    ]}
+                  >
+                    CHANNELS
+                  </Text>
+                </View>
+
+                <TouchableOpacity
+                  style={[
+                    styles.memberRowItem,
+                    {
+                      paddingHorizontal: 16,
+                      backgroundColor:
+                        activeChat.type === 'channel' ? colors.primarySoft : 'transparent',
+                    },
+                  ]}
+                  onPress={() => {
+                    switchConversation({ type: 'channel', id: projectId, title: projectTitle });
+                    setShowMobileMembers(false);
+                  }}
+                >
+                  <View style={styles.avatarWrapper}>
+                    <View
+                      style={[
+                        styles.memberAvatarCircle,
+                        {
+                          backgroundColor:
+                            activeChat.type === 'channel' ? colors.primary : colors.surfaceMuted,
+                        },
+                      ]}
                     >
-                      <View style={styles.avatarWrapper}>
-                        <View
-                          style={[
-                            styles.memberAvatarCircle,
-                            {
-                              backgroundColor: isLeader ? colors.primarySoft : colors.secondarySoft,
-                              borderColor: isLeader ? colors.primary : colors.secondary,
-                            },
-                          ]}
-                        >
-                          <Text
-                            style={{
-                              color: isLeader ? colors.primary : colors.secondary,
-                              fontWeight: '700',
-                              fontSize: 13,
-                            }}
+                      <Text
+                        style={{
+                          color:
+                            activeChat.type === 'channel' ? colors.onPrimary : colors.text,
+                          fontWeight: '700',
+                          fontSize: 13,
+                        }}
+                      >
+                        #
+                      </Text>
+                    </View>
+                  </View>
+                  <View style={{ flex: 1, marginLeft: 10 }}>
+                    <Text
+                      style={[
+                        typography.body,
+                        {
+                          color: colors.text,
+                          fontWeight: activeChat.type === 'channel' ? '700' : '600',
+                        },
+                      ]}
+                    >
+                      Team Chat (Group)
+                    </Text>
+                    <Text style={[typography.bodySmall, { color: colors.textMuted }]}>
+                      {confirmedMembers.length} members
+                    </Text>
+                  </View>
+                  {activeChat.type === 'channel' && (
+                    <Badge label="Active" variant="primary" />
+                  )}
+                </TouchableOpacity>
+
+                {/* Direct Messages Section */}
+                <View style={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 6 }}>
+                  <Text
+                    style={[
+                      typography.label,
+                      { color: colors.textMuted, letterSpacing: 0.8, fontSize: 11 },
+                    ]}
+                  >
+                    DIRECT MESSAGES
+                  </Text>
+                </View>
+
+                {confirmedMembers
+                  .filter((member) => {
+                    const currentUserId = user?.userId || user?.id;
+                    const isSelf =
+                      (currentUserId && member.userId === currentUserId) ||
+                      (user?.email &&
+                        member.user?.email &&
+                        member.user.email.toLowerCase() === user.email.toLowerCase());
+                    return !isSelf;
+                  })
+                  .map((member) => {
+                    const name =
+                      member.user?.profile?.fullName || member.user?.email || 'Team Member';
+                    const department = member.user?.profile?.department || 'Department N/A';
+                    const isLeader = member.role === 'LEADER';
+                    const isDmActive =
+                      activeChat.type === 'dm' && activeChat.targetUserId === member.userId;
+                    const unreadCount = member.userId ? unreadDms[member.userId] || 0 : 0;
+
+                    return (
+                      <TouchableOpacity
+                        key={member.id}
+                        style={[
+                          styles.memberRowItem,
+                          {
+                            paddingHorizontal: 16,
+                            backgroundColor: isDmActive ? colors.primarySoft : 'transparent',
+                          },
+                        ]}
+                        onPress={() => {
+                          if (member.userId) {
+                            switchConversation({
+                              type: 'dm',
+                              targetUserId: member.userId,
+                              targetUserName: name,
+                              targetUserAvatar: member.user?.profile?.avatarUrl,
+                              role: member.role,
+                              department,
+                            });
+                            setShowMobileMembers(false);
+                          }
+                        }}
+                      >
+                        <View style={styles.avatarWrapper}>
+                          <View
+                            style={[
+                              styles.memberAvatarCircle,
+                              {
+                                backgroundColor: isLeader
+                                  ? colors.primarySoft
+                                  : colors.secondarySoft,
+                                borderColor: isLeader ? colors.primary : colors.secondary,
+                              },
+                            ]}
                           >
-                            {name.charAt(0).toUpperCase()}
+                            <Text
+                              style={{
+                                color: isLeader ? colors.primary : colors.secondary,
+                                fontWeight: '700',
+                                fontSize: 13,
+                              }}
+                            >
+                              {name.charAt(0).toUpperCase()}
+                            </Text>
+                          </View>
+                          <View style={styles.onlineDot} />
+                        </View>
+
+                        <View style={{ flex: 1, marginLeft: 10 }}>
+                          <Text
+                            style={[
+                              typography.body,
+                              {
+                                color: colors.text,
+                                fontWeight: isDmActive ? '700' : '600',
+                              },
+                            ]}
+                          >
+                            {name}
+                          </Text>
+                          <Text style={[typography.bodySmall, { color: colors.textMuted }]}>
+                            {department}
                           </Text>
                         </View>
-                        <View style={styles.onlineDot} />
-                      </View>
 
-                      <View style={{ flex: 1, marginLeft: 10 }}>
-                        <Text style={[typography.body, { color: colors.text, fontWeight: isSelf ? '700' : '600' }]}>
-                          {name} {isSelf ? '(You)' : ''}
-                        </Text>
-                        <Text style={[typography.bodySmall, { color: colors.textMuted }]}>
-                          {department}
-                        </Text>
-                      </View>
+                        {unreadCount > 0 ? (
+                          <View
+                            style={{
+                              backgroundColor: '#EF4444',
+                              borderRadius: 10,
+                              paddingHorizontal: 6,
+                              paddingVertical: 1,
+                              marginRight: 6,
+                            }}
+                          >
+                            <Text style={{ color: '#FFFFFF', fontSize: 10, fontWeight: '700' }}>
+                              {unreadCount}
+                            </Text>
+                          </View>
+                        ) : null}
 
-                      <Badge
-                        label={isLeader ? 'Leader' : 'Member'}
-                        variant={isLeader ? 'primary' : 'secondary'}
-                      />
-                    </TouchableOpacity>
-                  );
-                })}
+                        <Badge
+                          label={isLeader ? 'Leader' : 'Member'}
+                          variant={isLeader ? 'primary' : 'secondary'}
+                        />
+                      </TouchableOpacity>
+                    );
+                  })}
               </ScrollView>
             </View>
           </View>
@@ -738,6 +1185,21 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: '#FFFFFF',
   },
+  currentUserFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderTopWidth: 1,
+  },
+  miniSelfAvatar: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   chatPane: {
     flex: 1,
   },
@@ -747,7 +1209,7 @@ const styles = StyleSheet.create({
   },
   dateBadge: {
     paddingHorizontal: 12,
-    paddingVertical: 3,
+    paddingVertical: 4,
     borderRadius: 12,
     borderWidth: 1,
   },
@@ -756,7 +1218,7 @@ const styles = StyleSheet.create({
   },
   messageRow: {
     flexDirection: 'row',
-    alignItems: 'flex-end',
+    marginVertical: 2,
   },
   messageRowOwn: {
     justifyContent: 'flex-end',
@@ -769,10 +1231,11 @@ const styles = StyleSheet.create({
     height: 28,
     borderRadius: 14,
     borderWidth: 1,
+    marginRight: 8,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 8,
-    marginBottom: 2,
+    alignSelf: 'flex-end',
+    marginBottom: 4,
   },
   messageBubble: {
     borderWidth: 1,
@@ -786,30 +1249,30 @@ const styles = StyleSheet.create({
   messageMetaRow: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
+    alignItems: 'center',
   },
   composerContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     borderTopWidth: 1,
   },
-  attachButton: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 8,
-  },
   composerInput: {
     flex: 1,
     borderWidth: 1,
-    fontSize: 14,
     maxHeight: 100,
+    fontSize: 14,
+  },
+  attachButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    marginRight: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   sendButton: {
     paddingHorizontal: 16,
     paddingVertical: 10,
-    minHeight: 38,
     justifyContent: 'center',
     alignItems: 'center',
   },

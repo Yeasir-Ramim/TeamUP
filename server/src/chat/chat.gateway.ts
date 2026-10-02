@@ -72,6 +72,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       }
 
       client.data.user = { userId, ...payload };
+      await client.join(`user:${userId}`);
 
       const projectId = client.handshake?.query?.projectId as string;
       if (projectId) {
@@ -238,4 +239,122 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       message: 'Left room',
     };
   }
+
+  /**
+   * Join a 1-on-1 direct message room
+   */
+  @SubscribeMessage('joinDmRoom')
+  async handleJoinDmRoom(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() payload: { targetUserId: string },
+  ) {
+    if (!payload?.targetUserId) {
+      return { success: false, error: 'targetUserId is required' };
+    }
+
+    const user = client.data.user;
+    const currentUserId = user?.userId || user?.sub;
+    if (!currentUserId) {
+      return { success: false, error: 'Unauthorized' };
+    }
+
+    const roomName = `dm:${[currentUserId, payload.targetUserId].sort().join('_')}`;
+    await client.join(roomName);
+
+    const messages = await this.chatService.getDirectMessages(
+      currentUserId,
+      payload.targetUserId,
+      50,
+    );
+
+    client.emit('dmHistory', {
+      targetUserId: payload.targetUserId,
+      messages,
+    });
+
+    return {
+      success: true,
+      roomName,
+      messages,
+    };
+  }
+
+  /**
+   * Leave a direct message room
+   */
+  @SubscribeMessage('leaveDmRoom')
+  async handleLeaveDmRoom(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() payload: { targetUserId: string },
+  ) {
+    const user = client.data.user;
+    const currentUserId = user?.userId || user?.sub;
+    if (currentUserId && payload?.targetUserId) {
+      const roomName = `dm:${[currentUserId, payload.targetUserId].sort().join('_')}`;
+      await client.leave(roomName);
+    }
+
+    return {
+      success: true,
+      message: 'Left direct message room',
+    };
+  }
+
+  /**
+   * Send a direct message
+   */
+  @SubscribeMessage('sendDirectMessage')
+  async handleSendDirectMessage(
+    @ConnectedSocket() client: Socket,
+    @MessageBody()
+    payload: { recipientId: string; content: string; projectId?: string },
+  ) {
+    if (!payload || typeof payload !== 'object') {
+      return { success: false, error: 'Invalid payload' };
+    }
+
+    const { recipientId, content, projectId } = payload;
+    if (!recipientId || typeof content !== 'string') {
+      return { success: false, error: 'recipientId and content are required' };
+    }
+
+    const trimmed = content.trim();
+    if (!trimmed || trimmed.length > 2000) {
+      return { success: false, error: 'Message content is empty or too long' };
+    }
+
+    const user = client.data.user;
+    const senderId = user?.userId || user?.sub;
+    if (!senderId) {
+      return { success: false, error: 'Unauthorized' };
+    }
+
+    try {
+      const message = await this.chatService.sendDirectMessage(
+        senderId,
+        recipientId,
+        trimmed,
+        projectId,
+      );
+
+      const roomName = `dm:${[senderId, recipientId].sort().join('_')}`;
+      this.server.to(roomName).emit('directMessage', message);
+      this.server.to(roomName).emit('newDirectMessage', { message });
+
+      // Notify personal rooms for cross-screen or offline notifications
+      this.server.to(`user:${recipientId}`).emit('newDirectMessage', { message });
+      this.server.to(`user:${senderId}`).emit('newDirectMessage', { message });
+
+      return {
+        success: true,
+        message,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error.message,
+      };
+    }
+  }
 }
+

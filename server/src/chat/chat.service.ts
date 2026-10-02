@@ -116,4 +116,165 @@ export class ChatService {
 
     return messages;
   }
+
+  /**
+   * Send a direct message (1-on-1) and persist to database
+   */
+  async sendDirectMessage(
+    senderId: string,
+    recipientId: string,
+    content: string,
+    projectId?: string,
+  ) {
+    const recipient = await this.prisma.user.findUnique({
+      where: { id: recipientId },
+    });
+
+    if (!recipient) {
+      throw new ForbiddenException('Recipient user not found');
+    }
+
+    const dm = await this.prisma.directMessage.create({
+      data: {
+        senderId,
+        recipientId,
+        content,
+        projectId: projectId || null,
+      },
+      include: {
+        sender: {
+          select: {
+            id: true,
+            email: true,
+            profile: {
+              select: {
+                fullName: true,
+                avatarUrl: true,
+              },
+            },
+          },
+        },
+        recipient: {
+          select: {
+            id: true,
+            email: true,
+            profile: {
+              select: {
+                fullName: true,
+                avatarUrl: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    return dm;
+  }
+
+  /**
+   * Get direct message history between two users
+   */
+  async getDirectMessages(
+    userAId: string,
+    userBId: string,
+    limit: number = 50,
+  ) {
+    const messages = await this.prisma.directMessage.findMany({
+      where: {
+        OR: [
+          { senderId: userAId, recipientId: userBId },
+          { senderId: userBId, recipientId: userAId },
+        ],
+      },
+      take: limit,
+      orderBy: { createdAt: 'desc' },
+      include: {
+        sender: {
+          select: {
+            id: true,
+            email: true,
+            profile: {
+              select: {
+                fullName: true,
+                avatarUrl: true,
+              },
+            },
+          },
+        },
+        recipient: {
+          select: {
+            id: true,
+            email: true,
+            profile: {
+              select: {
+                fullName: true,
+                avatarUrl: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    return messages.reverse();
+  }
+
+  /**
+   * Get all active DM conversations for a user with the latest message
+   */
+  async getUserConversations(userId: string) {
+    const messages = await this.prisma.directMessage.findMany({
+      where: {
+        OR: [{ senderId: userId }, { recipientId: userId }],
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 100,
+      include: {
+        sender: {
+          select: {
+            id: true,
+            email: true,
+            profile: {
+              select: {
+                fullName: true,
+                avatarUrl: true,
+              },
+            },
+          },
+        },
+        recipient: {
+          select: {
+            id: true,
+            email: true,
+            profile: {
+              select: {
+                fullName: true,
+                avatarUrl: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    const conversationMap = new Map<string, any>();
+    for (const msg of messages) {
+      const otherUser = msg.senderId === userId ? msg.recipient : msg.sender;
+      if (!otherUser || !otherUser.id) continue;
+      if (!conversationMap.has(otherUser.id)) {
+        conversationMap.set(otherUser.id, {
+          user: otherUser,
+          lastMessage: {
+            id: msg.id,
+            content: msg.content,
+            createdAt: msg.createdAt,
+            senderId: msg.senderId,
+          },
+        });
+      }
+    }
+
+    return Array.from(conversationMap.values());
+  }
 }

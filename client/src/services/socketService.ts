@@ -20,12 +20,41 @@ export interface ChatMessage {
   };
 }
 
+export interface DirectMessagePayload {
+  id: string;
+  senderId: string;
+  recipientId: string;
+  content: string;
+  createdAt: string;
+  projectId?: string | null;
+  sender?: {
+    id: string;
+    email: string;
+    profile?: {
+      fullName: string;
+      avatarUrl?: string;
+    };
+  };
+  recipient?: {
+    id: string;
+    email: string;
+    profile?: {
+      fullName: string;
+      avatarUrl?: string;
+    };
+  };
+}
+
 class SocketService {
   private socket: Socket | null = null;
   private currentProjectId: string | null = null;
   private statusListeners: Set<(status: SocketConnectionStatus) => void> = new Set();
   private messageListeners: Set<(message: ChatMessage) => void> = new Set();
   private historyListeners: Set<(messages: ChatMessage[]) => void> = new Set();
+  private directMessageListeners: Set<(message: DirectMessagePayload) => void> = new Set();
+  private dmHistoryListeners: Set<
+    (payload: { targetUserId: string; messages: DirectMessagePayload[] }) => void
+  > = new Set();
   private status: SocketConnectionStatus = 'disconnected';
 
   constructor() {
@@ -138,6 +167,33 @@ class SocketService {
       }
     });
 
+    this.socket.on('newDirectMessage', (payload: { message: DirectMessagePayload }) => {
+      if (payload?.message) {
+        this.directMessageListeners.forEach((listener) => {
+          try {
+            listener(payload.message);
+          } catch (err) {
+            console.warn('Error in socket direct message listener:', err);
+          }
+        });
+      }
+    });
+
+    this.socket.on(
+      'dmHistory',
+      (payload: { targetUserId: string; messages: DirectMessagePayload[] }) => {
+        if (payload) {
+          this.dmHistoryListeners.forEach((listener) => {
+            try {
+              listener(payload);
+            } catch (err) {
+              console.warn('Error in socket dmHistory listener:', err);
+            }
+          });
+        }
+      }
+    );
+
     return this.socket;
   }
 
@@ -188,6 +244,46 @@ class SocketService {
     });
   }
 
+  public joinDmRoom(targetUserId: string, callback?: (res: any) => void): void {
+    if (this.socket?.connected) {
+      this.socket.emit('joinDmRoom', { targetUserId }, (response: any) => {
+        if (callback) callback(response);
+      });
+    }
+  }
+
+  public leaveDmRoom(targetUserId: string): void {
+    if (this.socket?.connected) {
+      this.socket.emit('leaveDmRoom', { targetUserId });
+    }
+  }
+
+  public sendDirectMessage(
+    recipientId: string,
+    content: string,
+    projectId?: string,
+    callback?: (response: {
+      success: boolean;
+      message?: DirectMessagePayload;
+      error?: string;
+    }) => void
+  ): void {
+    if (!this.socket?.connected) {
+      if (callback) {
+        callback({ success: false, error: 'Socket is not connected' });
+      }
+      return;
+    }
+
+    this.socket.emit(
+      'sendDirectMessage',
+      { recipientId, content, projectId },
+      (res: any) => {
+        if (callback) callback(res);
+      }
+    );
+  }
+
   public onNewMessage(listener: (message: ChatMessage) => void): () => void {
     this.messageListeners.add(listener);
     return () => {
@@ -195,10 +291,28 @@ class SocketService {
     };
   }
 
+  public onNewDirectMessage(
+    listener: (message: DirectMessagePayload) => void
+  ): () => void {
+    this.directMessageListeners.add(listener);
+    return () => {
+      this.directMessageListeners.delete(listener);
+    };
+  }
+
   public onMessageHistory(listener: (messages: ChatMessage[]) => void): () => void {
     this.historyListeners.add(listener);
     return () => {
       this.historyListeners.delete(listener);
+    };
+  }
+
+  public onDmHistory(
+    listener: (payload: { targetUserId: string; messages: DirectMessagePayload[] }) => void
+  ): () => void {
+    this.dmHistoryListeners.add(listener);
+    return () => {
+      this.dmHistoryListeners.delete(listener);
     };
   }
 
