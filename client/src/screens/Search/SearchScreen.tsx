@@ -203,7 +203,16 @@ export const SearchScreen: React.FC<SearchScreenProps> = ({ navigation }) => {
           {/* Header & Search Bar Card */}
           <Card style={styles.headerCard}>
             {/* Category Segmented Controls */}
-            <View style={styles.categoryRow}>
+            <View
+              style={[
+                styles.categoryRow,
+                {
+                  backgroundColor: colors.surfaceMuted,
+                  borderRadius: borderRadius.pill,
+                  padding: 4,
+                },
+              ]}
+            >
               {SEARCH_CATEGORIES.map((cat) => (
                 <TouchableOpacity
                   key={cat}
@@ -212,15 +221,15 @@ export const SearchScreen: React.FC<SearchScreenProps> = ({ navigation }) => {
                   style={[
                     styles.categoryBtn,
                     {
-                      backgroundColor: activeCategory === cat ? colors.primary : colors.surfaceMuted,
+                      backgroundColor: activeCategory === cat ? colors.primary : 'transparent',
                       borderRadius: borderRadius.pill,
                     },
                   ]}
                 >
                   <Text
                     style={{
-                      color: activeCategory === cat ? '#FFFFFF' : colors.textMuted,
-                      fontWeight: '600',
+                      color: activeCategory === cat ? colors.onPrimary : colors.text,
+                      fontWeight: activeCategory === cat ? '700' : '500',
                       fontSize: 13,
                     }}
                   >
