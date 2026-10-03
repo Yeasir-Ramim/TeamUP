@@ -114,13 +114,13 @@ export const MemberListScreen: React.FC<MemberListScreenProps> = ({ route, navig
     }
   };
 
-  const handleRemoveMember = (memberId: string, memberName: string) => {
+  const handleKickMember = (memberId: string, memberName: string) => {
     const confirmAction = async () => {
       try {
-        await workspaceService.removeMember(projectId, memberId);
+        await workspaceService.kickMember(projectId, memberId);
         await fetchMembers();
         if (Platform.OS !== 'web') {
-          Alert.alert('Success', 'Member removed');
+          Alert.alert('Success', `${memberName} has been removed from the project`);
         }
       } catch (err: any) {
         if (Platform.OS === 'web') {
@@ -132,16 +132,49 @@ export const MemberListScreen: React.FC<MemberListScreenProps> = ({ route, navig
     };
 
     if (Platform.OS === 'web') {
-      if (typeof window !== 'undefined' && window.confirm(`Are you sure you want to remove ${memberName} from this project?`)) {
+      if (typeof window !== 'undefined' && window.confirm(`Are you sure you want to kick ${memberName} from this project? They will lose access to the workspace.`)) {
         confirmAction();
       }
     } else {
       Alert.alert(
-        'Remove Member',
-        `Are you sure you want to remove ${memberName} from this project?`,
+        'Kick Member',
+        `Are you sure you want to kick ${memberName} from this project? They will lose access to the workspace.`,
         [
           { text: 'Cancel', style: 'cancel' },
-          { text: 'Remove', style: 'destructive', onPress: confirmAction },
+          { text: 'Kick Member', style: 'destructive', onPress: confirmAction },
+        ]
+      );
+    }
+  };
+
+  const handleLeaveProject = () => {
+    const confirmLeave = async () => {
+      try {
+        await workspaceService.leaveProject(projectId, currentMember?.id);
+        if (Platform.OS !== 'web') {
+          Alert.alert('Success', 'You have left the project workspace');
+        }
+        navigation?.navigate('MainApp', { screen: 'Projects' });
+      } catch (err: any) {
+        if (Platform.OS === 'web') {
+          window.alert(err?.message || 'Failed to leave project');
+        } else {
+          Alert.alert('Error', err?.message || 'Failed to leave project');
+        }
+      }
+    };
+
+    if (Platform.OS === 'web') {
+      if (typeof window !== 'undefined' && window.confirm('Are you sure you want to leave this project? You will lose access to the workspace, tasks, and project chat.')) {
+        confirmLeave();
+      }
+    } else {
+      Alert.alert(
+        'Leave Project',
+        'Are you sure you want to leave this project? You will lose access to the workspace, tasks, and project chat.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Leave Project', style: 'destructive', onPress: confirmLeave },
         ]
       );
     }
@@ -229,12 +262,25 @@ export const MemberListScreen: React.FC<MemberListScreenProps> = ({ route, navig
             )}
             {item.status === 'ACCEPTED' && (
               <Button
-                title="Remove"
+                title="Kick Member"
                 variant="outline"
-                onPress={() => handleRemoveMember(item.id, displayName)}
+                onPress={() => handleKickMember(item.id, displayName)}
                 size="sm"
+                style={{ borderColor: colors.accent }}
               />
             )}
+          </View>
+        )}
+
+        {isSelf && item.status === 'ACCEPTED' && (
+          <View style={[styles.actionsRow, { marginTop: spacing.md }]}>
+            <Button
+              title="Leave Project"
+              variant="outline"
+              onPress={handleLeaveProject}
+              size="sm"
+              style={{ borderColor: colors.accent }}
+            />
           </View>
         )}
       </Card>
@@ -318,6 +364,24 @@ export const MemberListScreen: React.FC<MemberListScreenProps> = ({ route, navig
               {otherMembers.map(renderMemberCard)}
             </View>
           )}
+
+          {/* Danger Zone: Leave Project */}
+          {currentMember?.status === 'ACCEPTED' && (
+            <Card style={[styles.dangerCard, { marginTop: spacing.xl, borderColor: colors.border, borderWidth: 1 }]}>
+              <Text style={[typography.h3, { color: colors.accent, marginBottom: 4 }]}>
+                Leave Project
+              </Text>
+              <Text style={[typography.bodySmall, { color: colors.textMuted, marginBottom: spacing.md }]}>
+                If you leave this project, you will forfeit access to team tasks, calendar events, shared files, and chats.
+              </Text>
+              <Button
+                title="Leave Project"
+                variant="outline"
+                onPress={handleLeaveProject}
+                style={{ borderColor: colors.accent }}
+              />
+            </Card>
+          )}
         </ScrollView>
       </StateWrapper>
     </View>
@@ -354,5 +418,8 @@ const styles = StyleSheet.create({
   actionsRow: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
+  },
+  dangerCard: {
+    padding: 16,
   },
 });

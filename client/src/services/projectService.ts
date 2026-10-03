@@ -124,4 +124,11 @@ export const projectService = {
   getProjectMembers: async (projectId: string): Promise<ProjectMember[]> => {
     return api.get<ProjectMember[]>(`/projects/${projectId}/members`);
   },
+
+  /**
+   * Leave project (current user)
+   */
+  leaveProject: async (projectId: string): Promise<any> => {
+    return api.post(`/projects/${projectId}/leave`);
+  },
 };

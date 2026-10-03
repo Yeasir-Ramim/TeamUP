@@ -74,4 +74,25 @@ export const workspaceService = {
   removeMember: async (projectId: string, memberId: string): Promise<any> => {
     return api.delete(`/projects/${projectId}/members/${memberId}`);
   },
+
+  /**
+   * Kick member from project (Leader only)
+   */
+  kickMember: async (projectId: string, memberId: string): Promise<any> => {
+    return api.delete(`/projects/${projectId}/members/${memberId}`);
+  },
+
+  /**
+   * Leave project (current user)
+   */
+  leaveProject: async (projectId: string, memberId?: string): Promise<any> => {
+    if (memberId) {
+      try {
+        return await api.post(`/projects/${projectId}/leave`);
+      } catch {
+        return api.delete(`/projects/${projectId}/members/${memberId}`);
+      }
+    }
+    return api.post(`/projects/${projectId}/leave`);
+  },
 };

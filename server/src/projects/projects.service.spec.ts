@@ -9,7 +9,15 @@ describe('ProjectsService - Search & Multi-criteria Filters', () => {
   const mockPrismaService = {
     project: {
       findMany: jest.fn(),
+      findUnique: jest.fn(),
+      findFirst: jest.fn(),
       count: jest.fn(),
+    },
+    projectMember: {
+      findFirst: jest.fn(),
+      findMany: jest.fn(),
+      count: jest.fn(),
+      delete: jest.fn(),
     },
   };
 
@@ -163,4 +171,107 @@ describe('ProjectsService - Search & Multi-criteria Filters', () => {
       expect(result[0].memberCount).toBe(0);
     });
   });
+
+  describe('leaveProject and removeMember', () => {
+    it('should allow a regular member to leave the project', async () => {
+      mockPrismaService.projectMember.findFirst
+        .mockResolvedValueOnce({
+          id: 'mem-1',
+          projectId: 'proj-1',
+          userId: 'user-member',
+          role: 'MEMBER',
+          status: 'ACCEPTED',
+        })
+        .mockResolvedValueOnce({
+          id: 'mem-1',
+          projectId: 'proj-1',
+          userId: 'user-member',
+          role: 'MEMBER',
+          status: 'ACCEPTED',
+        })
+        .mockResolvedValueOnce(null); // not leader in isProjectLeader
+
+      mockPrismaService.project.findUnique.mockResolvedValue({
+        id: 'proj-1',
+        creatorId: 'user-leader',
+      });
+      mockPrismaService.project.findFirst.mockResolvedValue(null);
+      mockPrismaService.projectMember.delete.mockResolvedValue({ id: 'mem-1' });
+
+      const result = await service.leaveProject('proj-1', 'user-member');
+
+      expect(result).toEqual({ message: 'Member removed successfully' });
+      expect(mockPrismaService.projectMember.delete).toHaveBeenCalledWith({
+        where: { id: 'mem-1' },
+      });
+    });
+
+    it('should throw NotFoundException if member record does not exist', async () => {
+      mockPrismaService.projectMember.findFirst.mockResolvedValueOnce(null);
+
+      await expect(
+        service.leaveProject('proj-1', 'user-stranger')
+      ).rejects.toThrow('Member record not found in this project');
+    });
+
+    it('should allow project leader to kick a member', async () => {
+      mockPrismaService.project.findUnique.mockResolvedValue({
+        id: 'proj-1',
+        creatorId: 'user-leader',
+      });
+      mockPrismaService.projectMember.findFirst
+        .mockResolvedValueOnce({
+          id: 'mem-target',
+          projectId: 'proj-1',
+          userId: 'user-target',
+          role: 'MEMBER',
+          status: 'ACCEPTED',
+        })
+        .mockResolvedValueOnce({
+          id: 'mem-leader',
+          projectId: 'proj-1',
+          userId: 'user-leader',
+          role: 'LEADER',
+          status: 'ACCEPTED',
+        });
+      mockPrismaService.projectMember.delete.mockResolvedValue({ id: 'mem-target' });
+
+      const result = await service.removeMember('proj-1', 'mem-target', 'user-leader');
+
+      expect(result).toEqual({ message: 'Member removed successfully' });
+      expect(mockPrismaService.projectMember.delete).toHaveBeenCalledWith({
+        where: { id: 'mem-target' },
+      });
+    });
+
+    it('should block a sole leader from leaving if other accepted members exist', async () => {
+      mockPrismaService.project.findUnique.mockResolvedValue({
+        id: 'proj-1',
+        creatorId: 'user-leader',
+      });
+      mockPrismaService.projectMember.findFirst
+        .mockResolvedValueOnce({
+          id: 'mem-leader',
+          projectId: 'proj-1',
+          userId: 'user-leader',
+          role: 'LEADER',
+          status: 'ACCEPTED',
+        })
+        .mockResolvedValueOnce({
+          id: 'mem-leader',
+          projectId: 'proj-1',
+          userId: 'user-leader',
+          role: 'LEADER',
+          status: 'ACCEPTED',
+        });
+      mockPrismaService.projectMember.count
+        .mockResolvedValueOnce(1) // leaderCount = 1
+        .mockResolvedValueOnce(2); // otherMembers = 2
+
+      await expect(
+        service.leaveProject('proj-1', 'user-leader')
+      ).rejects.toThrow('As the sole leader, you must promote another member to leader before leaving.');
+    });
+  });
 });
+
