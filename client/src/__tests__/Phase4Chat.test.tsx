@@ -283,4 +283,36 @@ describe('Phase 4 — Team Chat', () => {
       expect(getByText('Team Chat')).toBeTruthy();
     });
   });
+
+  it('opens attachment options sheet when plus button is tapped', async () => {
+    const route = {
+      params: {
+        projectId: 'proj-1',
+        projectTitle: 'Drone Fleet Chat',
+      },
+    };
+
+    const { getByLabelText, getByText } = render(
+      <ThemeProvider>
+        <ChatScreen route={route} />
+      </ThemeProvider>
+    );
+
+    await waitFor(() => {
+      expect(getByText('Team Chat')).toBeTruthy();
+    });
+
+    // Tap + button
+    const plusButton = getByLabelText('Add attachment');
+    fireEvent.press(plusButton);
+
+    await waitFor(() => {
+      expect(getByText('Add Attachment')).toBeTruthy();
+      expect(getByText('Photo or Image')).toBeTruthy();
+      expect(getByText('Document or File')).toBeTruthy();
+    });
+
+    // Tap Cancel
+    fireEvent.press(getByText('Cancel'));
+  });
 });
