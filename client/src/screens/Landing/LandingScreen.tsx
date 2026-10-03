@@ -12,24 +12,22 @@ import {
   Users,
   Calendar,
   GitBranch,
-  Layers,
   Sun,
   Moon,
   ArrowRight,
   Code2,
-  CheckCircle2,
   Sparkles,
-  Search,
 } from 'lucide-react-native';
 import { useTheme } from '../../theme/ThemeContext';
 import { projectService, Project } from '../../services/projectService';
+import { TeamUpLogo } from '../../components/TeamUpLogo';
 
 export interface LandingScreenProps {
   navigation: any;
 }
 
 export const LandingScreen: React.FC<LandingScreenProps> = ({ navigation }) => {
-  const { colors, isDark, toggleTheme } = useTheme();
+  const { isDark, toggleTheme } = useTheme();
   const [liveProjects, setLiveProjects] = useState<Project[]>([]);
   const [loadingProjects, setLoadingProjects] = useState<boolean>(true);
 
@@ -64,10 +62,6 @@ export const LandingScreen: React.FC<LandingScreenProps> = ({ navigation }) => {
 
   const handleNavigateLogin = () => {
     navigation.navigate('Login');
-  };
-
-  const handleNavigateMarketplace = () => {
-    navigation.navigate('Marketplace');
   };
 
   const handleSelectProject = (projectId: string) => {
@@ -136,7 +130,7 @@ export const LandingScreen: React.FC<LandingScreenProps> = ({ navigation }) => {
               },
             ]}
           >
-            <Layers size={18} color={isDark ? '#FAFAFA' : '#18181B'} />
+            <TeamUpLogo size={20} />
           </View>
           <View style={styles.brandTextGroup}>
             <Text style={[styles.brandTitle, { color: textPrimaryColor }]}>
@@ -149,22 +143,6 @@ export const LandingScreen: React.FC<LandingScreenProps> = ({ navigation }) => {
         </View>
 
         <View style={styles.navActions}>
-          <TouchableOpacity
-            style={[
-              styles.navMarketplaceBtn,
-              {
-                backgroundColor: isDark ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0, 0, 0, 0.03)',
-                borderColor: surfaceBorder,
-              },
-            ]}
-            onPress={handleNavigateMarketplace}
-          >
-            <Search size={14} color={textMutedColor} />
-            <Text style={[styles.navMarketplaceText, { color: textPrimaryColor }]}>
-              Marketplace
-            </Text>
-          </TouchableOpacity>
-
           <TouchableOpacity
             style={[
               styles.themeToggleBtn,
@@ -272,7 +250,7 @@ export const LandingScreen: React.FC<LandingScreenProps> = ({ navigation }) => {
           </TouchableOpacity>
 
           <TouchableOpacity
-            onPress={handleNavigateMarketplace}
+            onPress={handleNavigateLogin}
             style={[
               styles.secondaryActionBtn,
               {
@@ -288,7 +266,7 @@ export const LandingScreen: React.FC<LandingScreenProps> = ({ navigation }) => {
                 { color: textPrimaryColor },
               ]}
             >
-              Explore Marketplace
+              Log In
             </Text>
           </TouchableOpacity>
         </View>
@@ -543,7 +521,7 @@ export const LandingScreen: React.FC<LandingScreenProps> = ({ navigation }) => {
               },
             ]}
           >
-            <Layers size={28} color={textMutedColor} />
+            <TeamUpLogo size={32} />
             <Text style={[styles.emptyProjectsTitle, { color: textPrimaryColor }]}>
               No active projects yet
             </Text>
@@ -568,24 +546,6 @@ export const LandingScreen: React.FC<LandingScreenProps> = ({ navigation }) => {
             </TouchableOpacity>
           </View>
         )}
-
-        <View style={styles.exploreMarketplaceRow}>
-          <TouchableOpacity
-            onPress={handleNavigateMarketplace}
-            style={[
-              styles.exploreMarketplaceBtn,
-              {
-                backgroundColor: surfaceBg,
-                borderColor: surfaceBorder,
-              },
-            ]}
-          >
-            <Text style={[styles.exploreMarketplaceText, { color: textPrimaryColor }]}>
-              Explore All Projects in Marketplace
-            </Text>
-            <ArrowRight size={15} color={textPrimaryColor} style={{ marginLeft: 6 }} />
-          </TouchableOpacity>
-        </View>
       </View>
 
       {/* Platform Capabilities (Linear Bento Cards) */}
@@ -1102,19 +1062,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
   },
-  navMarketplaceBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 8,
-    borderWidth: 1,
-    gap: 6,
-  },
-  navMarketplaceText: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
   themeToggleBtn: {
     paddingHorizontal: 9,
     paddingVertical: 6,
@@ -1418,22 +1365,6 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   createProjectBtnText: {
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  exploreMarketplaceRow: {
-    alignItems: 'center',
-    marginTop: 20,
-  },
-  exploreMarketplaceBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 8,
-    borderWidth: 1,
-  },
-  exploreMarketplaceText: {
     fontSize: 13,
     fontWeight: '600',
   },
