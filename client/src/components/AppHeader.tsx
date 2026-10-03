@@ -11,13 +11,16 @@ import {
 } from 'react-native';
 import { useSafeInsets } from '../utils/useSafeInsets';
 import { useTheme } from '../theme/ThemeContext';
+import { ArrowLeft } from 'lucide-react-native';
 
 export interface HeaderAction {
   icon: React.ReactNode;
-  onPress: () => void;
+  onPress?: () => void;
   accessibilityLabel?: string;
   testID?: string;
   badgeCount?: number;
+  custom?: boolean;
+  style?: StyleProp<ViewStyle>;
 }
 
 export interface AppHeaderProps {
@@ -63,16 +66,15 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
               accessibilityRole="button"
               accessibilityLabel="Go back"
               onPress={onBack}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
               style={[
-                styles.iconButton,
+                styles.backButton,
                 {
-                  backgroundColor: colors.surfaceMuted,
                   marginRight: spacing.sm,
                 },
               ]}
             >
-              <Text style={{ fontSize: 18, color: colors.text }}>←</Text>
+              <ArrowLeft size={22} color={colors.text} strokeWidth={2} />
             </TouchableOpacity>
           )}
 
@@ -110,32 +112,63 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
 
         {actions.length > 0 && (
           <View style={styles.actionsContainer}>
-            {actions.map((action, index) => (
-              <TouchableOpacity
-                key={index}
-                testID={action.testID}
-                accessibilityRole="button"
-                accessibilityLabel={action.accessibilityLabel}
-                onPress={action.onPress}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                style={[
-                  styles.iconButton,
-                  {
-                    backgroundColor: colors.surfaceMuted,
-                    marginLeft: spacing.xs + 2,
-                  },
-                ]}
-              >
-                {action.icon}
-                {action.badgeCount && action.badgeCount > 0 ? (
-                  <View style={[styles.badge, { backgroundColor: colors.accent }]}>
-                    <Text style={styles.badgeText}>
-                      {action.badgeCount > 9 ? '9+' : action.badgeCount}
-                    </Text>
+            {actions.map((action, index) => {
+              if (action.custom) {
+                if (action.onPress) {
+                  return (
+                    <TouchableOpacity
+                      key={index}
+                      testID={action.testID}
+                      accessibilityRole="button"
+                      accessibilityLabel={action.accessibilityLabel}
+                      onPress={action.onPress}
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                      style={[{ marginLeft: spacing.xs + 2 }, action.style]}
+                    >
+                      {action.icon}
+                    </TouchableOpacity>
+                  );
+                }
+                return (
+                  <View
+                    key={index}
+                    testID={action.testID}
+                    accessibilityLabel={action.accessibilityLabel}
+                    style={[{ marginLeft: spacing.xs + 2, justifyContent: 'center' }, action.style]}
+                  >
+                    {action.icon}
                   </View>
-                ) : null}
-              </TouchableOpacity>
-            ))}
+                );
+              }
+
+              return (
+                <TouchableOpacity
+                  key={index}
+                  testID={action.testID}
+                  accessibilityRole="button"
+                  accessibilityLabel={action.accessibilityLabel}
+                  onPress={action.onPress}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  style={[
+                    styles.iconButton,
+                    {
+                      backgroundColor: colors.surfaceMuted,
+                      marginLeft: spacing.xs + 2,
+                    },
+                    action.style,
+                  ]}
+                >
+                  {action.icon}
+                  {action.badgeCount && action.badgeCount > 0 ? (
+                    <View style={[styles.badge, { backgroundColor: colors.accent }]}>
+                      <Text style={styles.badgeText}>
+                        {action.badgeCount > 9 ? '9+' : action.badgeCount}
+                      </Text>
+                    </View>
+                  ) : null}
+                </TouchableOpacity>
+              );
+            })}
           </View>
         )}
       </View>
@@ -176,10 +209,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
+  backButton: {
+    width: 36,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   iconButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',

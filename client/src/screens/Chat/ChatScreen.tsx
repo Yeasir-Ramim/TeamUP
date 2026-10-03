@@ -1393,6 +1393,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
           ...(!isWide
             ? [
                 {
+                  custom: true,
                   icon: (
                     <Badge
                       label={
@@ -1411,26 +1412,59 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
               ]
             : []),
           {
+            custom: true,
             icon: (
-              <Badge
-                label={
-                  connectionStatus === 'connected'
+              <View
+                style={[
+                  styles.statusIndicatorRow,
+                  {
+                    backgroundColor: colors.surfaceMuted,
+                    borderColor: colors.border,
+                  },
+                ]}
+              >
+                <View
+                  style={[
+                    styles.statusDot,
+                    {
+                      backgroundColor:
+                        connectionStatus === 'connected'
+                          ? '#10B981'
+                          : connectionStatus === 'connecting' || connectionStatus === 'reconnecting'
+                          ? '#F59E0B'
+                          : '#6B7280',
+                    },
+                  ]}
+                />
+                <Text
+                  style={[
+                    typography.bodySmall,
+                    {
+                      color:
+                        connectionStatus === 'connected'
+                          ? colors.text
+                          : colors.textMuted,
+                      fontWeight: '600',
+                      fontSize: 12,
+                    },
+                  ]}
+                >
+                  {connectionStatus === 'connected'
                     ? 'Online'
                     : connectionStatus === 'connecting'
                     ? 'Connecting...'
                     : connectionStatus === 'reconnecting'
                     ? 'Reconnecting...'
-                    : 'Offline'
-                }
-                variant={connectionStatus === 'connected' ? 'secondary' : 'tertiary'}
-              />
+                    : 'Offline'}
+                </Text>
+              </View>
             ),
-            onPress: () => {},
             accessibilityLabel: 'Connection Status',
           },
           ...(activeChat.type === 'dm'
             ? [
                 {
+                  custom: true,
                   icon: <Badge label="Profile" variant="tertiary" />,
                   onPress: () => {
                     navigation?.navigate('UserProfile', { userId: activeChat.targetUserId });
@@ -2279,5 +2313,19 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
     letterSpacing: 0.5,
+  },
+  statusIndicatorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 9,
+    paddingVertical: 5,
+    borderRadius: 14,
+    borderWidth: 1,
+  },
+  statusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    marginRight: 6,
   },
 });
