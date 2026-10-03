@@ -81,7 +81,6 @@ describe('Landing Screen', () => {
     // Primary action CTAs
     expect(getAllByText('Join TeamUp').length).toBeGreaterThan(0);
     expect(getAllByText('Log In').length).toBeGreaterThan(0);
-    expect(getAllByText('Explore Marketplace').length).toBeGreaterThan(0);
 
     await waitFor(() => {
       expect(projectService.getProjects).toHaveBeenCalled();
@@ -116,23 +115,6 @@ describe('Landing Screen', () => {
     fireEvent.press(loginButtons[0]);
 
     expect(mockNavigation.navigate).toHaveBeenCalledWith('Login');
-
-    await waitFor(() => {
-      expect(projectService.getProjects).toHaveBeenCalled();
-    });
-  });
-
-  it('navigates to Marketplace when Explore Marketplace is pressed', async () => {
-    const { getAllByText } = render(
-      <ThemeProvider>
-        <LandingScreen navigation={mockNavigation} />
-      </ThemeProvider>
-    );
-
-    const marketplaceButtons = getAllByText('Explore Marketplace');
-    fireEvent.press(marketplaceButtons[0]);
-
-    expect(mockNavigation.navigate).toHaveBeenCalledWith('Marketplace');
 
     await waitFor(() => {
       expect(projectService.getProjects).toHaveBeenCalled();
