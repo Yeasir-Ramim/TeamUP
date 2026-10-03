@@ -57,6 +57,7 @@ export const WorkspaceTabBar: React.FC<WorkspaceTabBarProps> = ({
       projectId,
       projectTitle,
       isLeader,
+      initialView: tab.key === 'Chat' ? 'inbox' : undefined,
     });
   };
 
