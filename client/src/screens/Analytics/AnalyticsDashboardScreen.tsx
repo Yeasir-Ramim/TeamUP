@@ -17,6 +17,7 @@ import { StateWrapper, ScreenState } from '../../components/StateWrapper';
 import { WorkspaceTabBar } from '../../components/WorkspaceTabBar';
 import {
   analyticsService,
+  normalizeProjectAnalytics,
   ProjectAnalytics,
   TaskCompletionDataPoint,
   MemberContribution,
@@ -181,10 +182,14 @@ export const AnalyticsDashboardScreen: React.FC<AnalyticsDashboardScreenProps> =
 
     analyticsService
       .getProjectAnalytics(projectId)
-      .then((data) => {
+      .then((raw) => {
+        const data = typeof normalizeProjectAnalytics === 'function'
+          ? normalizeProjectAnalytics(raw, projectId)
+          : raw;
         setAnalytics(data);
         // Treat as empty only if truly no tasks at all
-        setScreenState(data.totalTasks === 0 ? 'empty' : 'populated');
+        const total = data?.totalTasks ?? (data as any)?.tasks?.byStatus?.total ?? 0;
+        setScreenState(total === 0 ? 'empty' : 'populated');
         setErrorMessage(undefined);
       })
       .catch((err: any) => {
@@ -206,9 +211,13 @@ export const AnalyticsDashboardScreen: React.FC<AnalyticsDashboardScreenProps> =
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     try {
-      const data = await analyticsService.getProjectAnalytics(projectId);
+      const raw = await analyticsService.getProjectAnalytics(projectId);
+      const data = typeof normalizeProjectAnalytics === 'function'
+        ? normalizeProjectAnalytics(raw, projectId)
+        : raw;
       setAnalytics(data);
-      setScreenState(data.totalTasks === 0 ? 'empty' : 'populated');
+      const total = data?.totalTasks ?? (data as any)?.tasks?.byStatus?.total ?? 0;
+      setScreenState(total === 0 ? 'empty' : 'populated');
     } catch (err: any) {
       setErrorMessage(err?.message || 'Refresh failed.');
     } finally {
@@ -218,53 +227,63 @@ export const AnalyticsDashboardScreen: React.FC<AnalyticsDashboardScreenProps> =
 
   // --- Render sections ---
 
-  const renderSummaryCards = (data: ProjectAnalytics) => (
-    <View style={[styles.summaryRow, { marginBottom: spacing.md }]}>
-      {/* Completion rate */}
-      <View style={[styles.summaryCard, { backgroundColor: colors.primarySoft, borderRadius: borderRadius.md, borderColor: colors.border, borderWidth: 1 }]}>
-        <Text style={[typography.display, { color: colors.primary, textAlign: 'center' }]}>
-          {data.overallCompletionRate}%
-        </Text>
-        <Text style={[typography.label, { color: colors.primary, textAlign: 'center', marginTop: 2 }]}>
-          COMPLETE
-        </Text>
-      </View>
+  const renderSummaryCards = (data: ProjectAnalytics) => {
+    const overallCompletionRate = data?.overallCompletionRate ?? (data as any)?.tasks?.completionRate ?? 0;
+    const totalTasks = data?.totalTasks ?? (data as any)?.tasks?.byStatus?.total ?? 0;
+    const totalFiles = data?.totalFiles ?? (data as any)?.activity?.files?.total ?? 0;
 
-      {/* Total tasks */}
-      <View style={[styles.summaryCard, { backgroundColor: colors.surfaceMuted, borderRadius: borderRadius.md, borderColor: colors.border, borderWidth: 1 }]}>
-        <Text style={[typography.display, { color: colors.text, textAlign: 'center' }]}>
-          {data.totalTasks}
-        </Text>
-        <Text style={[typography.label, { color: colors.textMuted, textAlign: 'center', marginTop: 2 }]}>
-          TASKS
-        </Text>
-      </View>
+    return (
+      <View style={[styles.summaryRow, { marginBottom: spacing.md }]}>
+        {/* Completion rate */}
+        <View style={[styles.summaryCard, { backgroundColor: colors.primarySoft, borderRadius: borderRadius.md, borderColor: colors.border, borderWidth: 1 }]}>
+          <Text style={[typography.display, { color: colors.primary, textAlign: 'center' }]}>
+            {overallCompletionRate}%
+          </Text>
+          <Text style={[typography.label, { color: colors.primary, textAlign: 'center', marginTop: 2 }]}>
+            COMPLETE
+          </Text>
+        </View>
 
-      {/* Files shared */}
-      <View style={[styles.summaryCard, { backgroundColor: colors.secondarySoft, borderRadius: borderRadius.md, borderColor: colors.border, borderWidth: 1 }]}>
-        <Text style={[typography.display, { color: colors.secondary, textAlign: 'center' }]}>
-          {data.totalFiles}
-        </Text>
-        <Text style={[typography.label, { color: colors.secondary, textAlign: 'center', marginTop: 2 }]}>
-          FILES
-        </Text>
+        {/* Total tasks */}
+        <View style={[styles.summaryCard, { backgroundColor: colors.surfaceMuted, borderRadius: borderRadius.md, borderColor: colors.border, borderWidth: 1 }]}>
+          <Text style={[typography.display, { color: colors.text, textAlign: 'center' }]}>
+            {totalTasks}
+          </Text>
+          <Text style={[typography.label, { color: colors.textMuted, textAlign: 'center', marginTop: 2 }]}>
+            TASKS
+          </Text>
+        </View>
+
+        {/* Files shared */}
+        <View style={[styles.summaryCard, { backgroundColor: colors.secondarySoft, borderRadius: borderRadius.md, borderColor: colors.border, borderWidth: 1 }]}>
+          <Text style={[typography.display, { color: colors.secondary, textAlign: 'center' }]}>
+            {totalFiles}
+          </Text>
+          <Text style={[typography.label, { color: colors.secondary, textAlign: 'center', marginTop: 2 }]}>
+            FILES
+          </Text>
+        </View>
       </View>
-    </View>
-  );
+    );
+  };
 
   const renderStatusBreakdown = (data: ProjectAnalytics) => {
+    const tasksByStatus = data?.tasksByStatus || (data as any)?.tasks?.byStatus || { TODO: 0, IN_PROGRESS: 0, TESTING: 0, DONE: 0 };
+    const tasksByPriority = data?.tasksByPriority || (data as any)?.tasks?.byPriority || { LOW: 0, MEDIUM: 0, HIGH: 0 };
+    const totalTasks = data?.totalTasks ?? (data as any)?.tasks?.byStatus?.total ?? 0;
+
     const statuses = [
-      { label: 'To Do',       value: data.tasksByStatus.TODO,        color: colors.border,   textColor: colors.textMuted },
-      { label: 'In Progress', value: data.tasksByStatus.IN_PROGRESS, color: colors.primary,  textColor: colors.primary },
-      { label: 'Testing',     value: data.tasksByStatus.TESTING,     color: colors.secondary,textColor: colors.secondary },
-      { label: 'Done',        value: data.tasksByStatus.DONE,        color: colors.accent,   textColor: colors.accent },
+      { label: 'To Do',       value: tasksByStatus.TODO ?? 0,        color: colors.border,   textColor: colors.textMuted },
+      { label: 'In Progress', value: tasksByStatus.IN_PROGRESS ?? 0, color: colors.primary,  textColor: colors.primary },
+      { label: 'Testing',     value: tasksByStatus.TESTING ?? 0,     color: colors.secondary,textColor: colors.secondary },
+      { label: 'Done',        value: tasksByStatus.DONE ?? 0,        color: colors.accent,   textColor: colors.accent },
     ];
 
     return (
       <Card style={[styles.sectionCard, { marginBottom: spacing.md }]}>
         <View style={styles.sectionHeader}>
           <Text style={[typography.h3, { color: colors.text }]}>Task Status Breakdown</Text>
-          <Badge label={`${data.totalTasks} total`} variant="tertiary" />
+          <Badge label={`${totalTasks} total`} variant="tertiary" />
         </View>
 
         <View style={[styles.statusGrid, { marginTop: spacing.md }]}>
@@ -279,7 +298,7 @@ export const AnalyticsDashboardScreen: React.FC<AnalyticsDashboardScreenProps> =
               <View style={{ marginTop: spacing.xs }}>
                 <HorizontalBar
                   value={s.value}
-                  max={data.totalTasks}
+                  max={totalTasks}
                   color={s.color}
                   height={6}
                 />
@@ -294,16 +313,16 @@ export const AnalyticsDashboardScreen: React.FC<AnalyticsDashboardScreenProps> =
             PRIORITY DISTRIBUTION
           </Text>
           {[
-            { label: 'High Priority',   value: data.tasksByPriority.HIGH,   color: colors.accent,   variant: 'error' as const },
-            { label: 'Medium Priority', value: data.tasksByPriority.MEDIUM, color: colors.warning,  variant: 'warning' as const },
-            { label: 'Low Priority',    value: data.tasksByPriority.LOW,    color: colors.secondary,variant: 'secondary' as const },
+            { label: 'High Priority',   value: tasksByPriority.HIGH ?? 0,   color: colors.accent,   variant: 'error' as const },
+            { label: 'Medium Priority', value: tasksByPriority.MEDIUM ?? 0, color: colors.warning,  variant: 'warning' as const },
+            { label: 'Low Priority',    value: tasksByPriority.LOW ?? 0,    color: colors.secondary,variant: 'secondary' as const },
           ].map((p) => (
             <View key={p.label} style={[styles.priorityItem, { marginBottom: spacing.sm }]}>
               <View style={styles.priorityLabelRow}>
                 <Badge label={p.label} variant={p.variant} style={{ marginRight: spacing.sm }} />
                 <Text style={[typography.label, { color: colors.textMuted }]}>{p.value} tasks</Text>
               </View>
-              <HorizontalBar value={p.value} max={data.totalTasks} color={p.color} />
+              <HorizontalBar value={p.value} max={totalTasks} color={p.color} />
             </View>
           ))}
         </View>
@@ -312,7 +331,7 @@ export const AnalyticsDashboardScreen: React.FC<AnalyticsDashboardScreenProps> =
   };
 
   const renderTaskCompletionChart = (data: ProjectAnalytics) => {
-    const points = data.taskCompletionOverTime;
+    const points = data?.taskCompletionOverTime;
     if (!points || points.length === 0) {
       return (
         <Card style={[styles.sectionCard, { marginBottom: spacing.md }]}>
@@ -357,8 +376,8 @@ export const AnalyticsDashboardScreen: React.FC<AnalyticsDashboardScreenProps> =
   };
 
   const renderMemberContributions = (data: ProjectAnalytics) => {
-    const members = data.memberContributions;
-    if (!members || members.length === 0) return null;
+    const members = data?.memberContributions;
+    if (!members || !Array.isArray(members) || members.length === 0) return null;
 
     const maxCompleted = Math.max(...members.map((m) => m.tasksCompleted), 1);
 
@@ -408,8 +427,8 @@ export const AnalyticsDashboardScreen: React.FC<AnalyticsDashboardScreenProps> =
   };
 
   const renderActivityChart = (data: ProjectAnalytics) => {
-    const activity = data.activityOverTime;
-    if (!activity || activity.length === 0) return null;
+    const activity = data?.activityOverTime;
+    if (!activity || !Array.isArray(activity) || activity.length === 0) return null;
 
     const visible = activity.slice(-7);
     const maxMessages = Math.max(...visible.map((p) => p.messages), 1);
@@ -496,9 +515,11 @@ export const AnalyticsDashboardScreen: React.FC<AnalyticsDashboardScreenProps> =
                 {renderActivityChart(analytics)}
 
                 <Text style={[typography.bodySmall, { color: colors.textMuted, textAlign: 'center', marginTop: spacing.sm }]}>
-                  Last updated {new Date(analytics.generatedAt).toLocaleString(undefined, {
-                    day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit',
-                  })}
+                  Last updated {analytics.generatedAt && !isNaN(new Date(analytics.generatedAt).getTime())
+                    ? new Date(analytics.generatedAt).toLocaleString(undefined, {
+                        day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit',
+                      })
+                    : 'just now'}
                 </Text>
               </>
             )}

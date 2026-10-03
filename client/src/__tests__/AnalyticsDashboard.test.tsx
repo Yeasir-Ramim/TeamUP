@@ -7,11 +7,15 @@ import { analyticsService } from '../services/analyticsService';
 
 // ─── Mocks ────────────────────────────────────────────────────────────────────
 
-jest.mock('../services/analyticsService', () => ({
-  analyticsService: {
-    getProjectAnalytics: jest.fn(),
-  },
-}));
+jest.mock('../services/analyticsService', () => {
+  const actual = jest.requireActual('../services/analyticsService');
+  return {
+    ...actual,
+    analyticsService: {
+      getProjectAnalytics: jest.fn(),
+    },
+  };
+});
 
 // ─── Fixtures ─────────────────────────────────────────────────────────────────
 
@@ -207,6 +211,69 @@ describe('AnalyticsDashboardScreen', () => {
 
     await waitFor(() => {
       expect(analyticsService.getProjectAnalytics).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  it('renders successfully with nested backend payload without crashing', async () => {
+    const liveBackendPayload = {
+      project: { id: 'proj-1', name: 'Live Project', key: 'LP' },
+      tasks: {
+        byStatus: { TODO: 3, IN_PROGRESS: 2, TESTING: 1, DONE: 4, total: 10 },
+        byPriority: { LOW: 2, MEDIUM: 5, HIGH: 3 },
+        completionRate: 40,
+        overdue: 0,
+      },
+      members: {
+        totalMembers: 1,
+        members: [
+          {
+            user: {
+              id: 'user-1',
+              email: 'sarah@example.com',
+              profile: { fullName: 'Sarah Connor', avatarUrl: null },
+            },
+            contributions: {
+              tasksAssigned: 5,
+              tasksCompleted: 2,
+              taskCompletionRate: 40,
+            },
+          },
+        ],
+      },
+      activity: {
+        messages: { total: 15 },
+        files: { total: 2 },
+        dailyActivity: [
+          { date: '2026-09-23', messages: 5, tasks: 2 },
+        ],
+      },
+    };
+
+    (analyticsService.getProjectAnalytics as jest.Mock).mockResolvedValue(liveBackendPayload);
+
+    const { getByText, getAllByText } = renderWithProviders();
+
+    await waitFor(() => {
+      expect(getAllByText('40%').length).toBeGreaterThan(0);
+      expect(getByText('Task Status Breakdown')).toBeTruthy();
+      expect(getByText('10 total')).toBeTruthy();
+      expect(getByText('Sarah Connor')).toBeTruthy();
+    });
+  });
+
+  it('renders gracefully when payload has missing status and priority fields', async () => {
+    const partialPayload = {
+      projectId: 'proj-1',
+      totalTasks: 0,
+      tasks: {},
+    };
+
+    (analyticsService.getProjectAnalytics as jest.Mock).mockResolvedValue(partialPayload);
+
+    const { getByText } = renderWithProviders();
+
+    await waitFor(() => {
+      expect(getByText('No Project Activity Yet')).toBeTruthy();
     });
   });
 });
