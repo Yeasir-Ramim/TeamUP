@@ -12,7 +12,11 @@ import {
   useWindowDimensions,
   ScrollView,
   Modal,
+  Linking,
+  ActivityIndicator,
 } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
+import * as DocumentPicker from 'expo-document-picker';
 import * as Haptics from 'expo-haptics';
 import { useTheme } from '../../theme/ThemeContext';
 import { AppHeader } from '../../components/AppHeader';
@@ -26,9 +30,11 @@ import {
   SocketConnectionStatus,
 } from '../../services/socketService';
 import { chatService } from '../../services/chatService';
+import { fileService } from '../../services/fileService';
 import { workspaceService } from '../../services/workspaceService';
 import { ProjectMember } from '../../services/projectService';
 import { useAuth } from '../../context/AuthContext';
+import { apiConfig } from '../../services/apiConfig';
 
 export interface ChatScreenProps {
   route?: {
@@ -82,6 +88,9 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
   const [unreadDms, setUnreadDms] = useState<Record<string, number>>({});
   const [members, setMembers] = useState<ProjectMember[]>([]);
   const [showMobileMembers, setShowMobileMembers] = useState(false);
+  const [attachmentModalVisible, setAttachmentModalVisible] = useState(false);
+  const [isUploadingAttachment, setIsUploadingAttachment] = useState(false);
+  const [uploadFileName, setUploadFileName] = useState<string | null>(null);
   const [inputText, setInputText] = useState('');
   const [screenState, setScreenState] = useState<ScreenState>('loading');
   const [errorMessage, setErrorMessage] = useState<string | undefined>();
@@ -453,11 +462,157 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
   };
 
   const handleAttachment = () => {
-    Alert.alert('Share with Team', 'Select an attachment type:', [
-      { text: 'Image', onPress: () => {} },
-      { text: 'Document', onPress: () => {} },
-      { text: 'Cancel', style: 'cancel' },
-    ]);
+    if (Platform.OS !== 'web') {
+      try {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      } catch {
+        // ignore
+      }
+    }
+    setAttachmentModalVisible(true);
+  };
+
+  const uploadAndSendAttachment = async (file: {
+    uri: string;
+    name: string;
+    mimeType: string;
+    size: number;
+  }) => {
+    setIsUploadingAttachment(true);
+    setUploadFileName(file.name);
+    try {
+      let fileUrl = file.uri;
+      try {
+        if (projectId) {
+          const uploaded = await fileService.uploadFile(projectId, file);
+          if (uploaded?.id) {
+            fileUrl = `${apiConfig.getApiUrl()}/projects/${projectId}/files/${uploaded.id}/download`;
+          } else if (uploaded?.url) {
+            fileUrl = uploaded.url;
+          }
+        }
+      } catch (uploadErr) {
+        console.warn('Backend file upload fallback to local URI:', uploadErr);
+      }
+
+      const attachmentText = `[Attachment: ${file.name}](${fileUrl})`;
+
+      if (activeChat.type === 'channel') {
+        const tempId = `temp-${Date.now()}`;
+        const optimisticMsg: DisplayMessage = {
+          id: tempId,
+          projectId,
+          senderId: currentUserId || 'me',
+          content: attachmentText,
+          createdAt: new Date().toISOString(),
+          isPending: true,
+          sender: {
+            id: currentUserId || 'me',
+            email: user?.email || '',
+            profile: { fullName: user?.fullName || 'Me' },
+          },
+        };
+        setChannelMessages((prev) => [...prev, optimisticMsg]);
+
+        socketService.sendMessage(projectId, attachmentText, (ack) => {
+          if (ack && ack.success && ack.message) {
+            const confirmedMsg = ack.message as DisplayMessage;
+            setChannelMessages((prev) =>
+              prev.map((m) => (m.id === tempId ? confirmedMsg : m))
+            );
+          }
+        });
+      } else {
+        const partnerId = activeChat.targetUserId;
+        const tempId = `temp-dm-${Date.now()}`;
+        const optimisticDm: DisplayMessage = {
+          id: tempId,
+          projectId,
+          senderId: currentUserId || 'me',
+          content: attachmentText,
+          createdAt: new Date().toISOString(),
+          isPending: true,
+          sender: {
+            id: currentUserId || 'me',
+            email: user?.email || '',
+            profile: { fullName: user?.fullName || 'Me' },
+          },
+        };
+
+        setDmMessages((prev) => ({
+          ...prev,
+          [partnerId]: [...(prev[partnerId] || []), optimisticDm],
+        }));
+
+        socketService.sendDirectMessage(partnerId, attachmentText, projectId, (ack) => {
+          if (ack && ack.success && ack.message) {
+            const confirmedDm = ack.message as DisplayMessage;
+            setDmMessages((prev) => ({
+              ...prev,
+              [partnerId]: (prev[partnerId] || []).map((m) =>
+                m.id === tempId ? confirmedDm : m
+              ),
+            }));
+          }
+        });
+      }
+    } catch (err: any) {
+      Alert.alert('Upload Error', err?.message || 'Could not send attachment.');
+    } finally {
+      setIsUploadingAttachment(false);
+      setUploadFileName(null);
+    }
+  };
+
+  const handlePickImage = async () => {
+    setAttachmentModalVisible(false);
+    try {
+      if (Platform.OS !== 'web') {
+        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (status !== 'granted') {
+          Alert.alert('Permission Required', 'Photo library access is needed to share images.');
+          return;
+        }
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: false,
+        quality: 0.85,
+      });
+
+      if (result.canceled || !result.assets?.length) return;
+      const asset = result.assets[0];
+
+      const mimeType = asset.mimeType || 'image/jpeg';
+      const name = asset.fileName || `image-${Date.now()}.jpg`;
+      const size = asset.fileSize || 0;
+
+      await uploadAndSendAttachment({ uri: asset.uri, name, mimeType, size });
+    } catch (err: any) {
+      Alert.alert('Image Error', err?.message || 'Failed to select image.');
+    }
+  };
+
+  const handlePickDocument = async () => {
+    setAttachmentModalVisible(false);
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        copyToCacheDirectory: true,
+        multiple: false,
+      });
+
+      if (result.canceled || !result.assets?.length) return;
+      const asset = result.assets[0];
+
+      const mimeType = asset.mimeType || 'application/octet-stream';
+      const name = asset.name;
+      const size = asset.size || 0;
+
+      await uploadAndSendAttachment({ uri: asset.uri, name, mimeType, size });
+    } catch (err: any) {
+      Alert.alert('Document Error', err?.message || 'Failed to select document.');
+    }
   };
 
   const renderMessageItem = ({ item }: { item: DisplayMessage }) => {
@@ -517,14 +672,82 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
               isOwn ? styles.bubbleOwn : styles.bubbleOther,
             ]}
           >
-            <Text
-              style={[
-                typography.body,
-                { color: isOwn ? '#FFFFFF' : colors.text },
-              ]}
-            >
-              {item.content}
-            </Text>
+            {(() => {
+              const attachmentMatch = item.content.match(/^\[Attachment:\s*(.+?)\]\((.+?)\)$/);
+              if (attachmentMatch) {
+                const fileName = attachmentMatch[1];
+                const rawUrl = attachmentMatch[2];
+                const fileUrl =
+                  rawUrl.startsWith('http') ||
+                  rawUrl.startsWith('file:') ||
+                  rawUrl.startsWith('blob:') ||
+                  rawUrl.startsWith('data:')
+                    ? rawUrl
+                    : `${apiConfig.getApiUrl()}${rawUrl.startsWith('/') ? '' : '/'}${rawUrl}`;
+                return (
+                  <TouchableOpacity
+                    accessibilityRole="button"
+                    accessibilityLabel={`Open attachment ${fileName}`}
+                    onPress={() => {
+                      if (fileUrl) {
+                        Linking.openURL(fileUrl).catch(() => {
+                          Alert.alert('File', `Cannot open file: ${fileName}`);
+                        });
+                      }
+                    }}
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      paddingVertical: 4,
+                    }}
+                    activeOpacity={0.8}
+                  >
+                    <View
+                      style={{
+                        backgroundColor: isOwn ? 'rgba(255,255,255,0.2)' : colors.primarySoft,
+                        borderRadius: 6,
+                        paddingHorizontal: 6,
+                        paddingVertical: 2,
+                        marginRight: 8,
+                      }}
+                    >
+                      <Text
+                        style={{
+                          fontSize: 10,
+                          fontWeight: '700',
+                          color: isOwn ? '#FFFFFF' : colors.primary,
+                        }}
+                      >
+                        FILE
+                      </Text>
+                    </View>
+                    <Text
+                      style={[
+                        typography.body,
+                        {
+                          color: isOwn ? '#FFFFFF' : colors.primary,
+                          textDecorationLine: 'underline',
+                          fontWeight: '600',
+                        },
+                      ]}
+                      numberOfLines={1}
+                    >
+                      {fileName}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              }
+              return (
+                <Text
+                  style={[
+                    typography.body,
+                    { color: isOwn ? '#FFFFFF' : colors.text },
+                  ]}
+                >
+                  {item.content}
+                </Text>
+              );
+            })()}
 
             <View style={styles.messageMetaRow}>
               <Text
@@ -1346,6 +1569,24 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
             </StateWrapper>
           </View>
 
+          {/* Attachment Uploading Banner */}
+          {isUploadingAttachment && (
+            <View
+              style={[
+                styles.uploadingBanner,
+                { backgroundColor: colors.surfaceMuted, borderTopColor: colors.border },
+              ]}
+            >
+              <ActivityIndicator size="small" color={colors.primary} />
+              <Text
+                style={[typography.bodySmall, { color: colors.text, marginLeft: 8 }]}
+                numberOfLines={1}
+              >
+                Uploading {uploadFileName || 'attachment'}...
+              </Text>
+            </View>
+          )}
+
           {/* Composer Input Bar */}
           <View
             style={[
@@ -1648,6 +1889,83 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
           </View>
         </Modal>
       )}
+
+      {/* Attachment Options Modal Sheet */}
+      <Modal
+        visible={attachmentModalVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setAttachmentModalVisible(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalBackdrop}
+          activeOpacity={1}
+          onPress={() => setAttachmentModalVisible(false)}
+        >
+          <View
+            style={[
+              styles.modalCard,
+              { backgroundColor: colors.surface, borderColor: colors.border },
+            ]}
+            onStartShouldSetResponder={() => true}
+          >
+            <View style={[styles.modalHeaderRow, { borderBottomColor: colors.border }]}>
+              <Text style={[typography.h3, { color: colors.text }]}>Add Attachment</Text>
+              <TouchableOpacity
+                onPress={() => setAttachmentModalVisible(false)}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Text style={[typography.label, { color: colors.primary, fontWeight: '700' }]}>
+                  Cancel
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={{ paddingVertical: 8, paddingHorizontal: 16 }}>
+              <TouchableOpacity
+                style={[
+                  styles.attachmentOptionRow,
+                  { borderBottomColor: colors.border, borderBottomWidth: 1 },
+                ]}
+                onPress={handlePickImage}
+              >
+                <View style={[styles.attachmentOptionIcon, { backgroundColor: colors.primarySoft }]}>
+                  <Text style={[styles.attachmentOptionBadgeText, { color: colors.primary }]}>
+                    IMG
+                  </Text>
+                </View>
+                <View style={{ marginLeft: 12, flex: 1 }}>
+                  <Text style={[typography.body, { color: colors.text, fontWeight: '600' }]}>
+                    Photo or Image
+                  </Text>
+                  <Text style={[typography.bodySmall, { color: colors.textMuted }]}>
+                    Upload a JPG, PNG or WEBP image
+                  </Text>
+                </View>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.attachmentOptionRow}
+                onPress={handlePickDocument}
+              >
+                <View style={[styles.attachmentOptionIcon, { backgroundColor: colors.surfaceMuted }]}>
+                  <Text style={[styles.attachmentOptionBadgeText, { color: colors.text }]}>
+                    DOC
+                  </Text>
+                </View>
+                <View style={{ marginLeft: 12, flex: 1 }}>
+                  <Text style={[typography.body, { color: colors.text, fontWeight: '600' }]}>
+                    Document or File
+                  </Text>
+                  <Text style={[typography.bodySmall, { color: colors.textMuted }]}>
+                    Share a PDF, document or code file
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </KeyboardAvoidingView>
   );
 };
@@ -1937,5 +2255,29 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  uploadingBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderTopWidth: 1,
+  },
+  attachmentOptionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+  },
+  attachmentOptionIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  attachmentOptionBadgeText: {
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 0.5,
   },
 });
