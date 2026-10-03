@@ -448,6 +448,7 @@ export const AnalyticsDashboardScreen: React.FC<AnalyticsDashboardScreenProps> =
         onBack={() => navigation?.goBack?.()}
         actions={[
           {
+            custom: true,
             icon: <Text style={{ fontSize: 13, fontWeight: '700', color: colors.primary }}>Refresh</Text>,
             onPress: onRefresh,
             accessibilityLabel: 'Refresh analytics',

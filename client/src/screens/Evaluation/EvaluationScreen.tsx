@@ -600,6 +600,7 @@ export const EvaluationScreen: React.FC<EvaluationScreenProps> = ({ route, navig
         onBack={() => navigation?.goBack?.()}
         actions={[
           {
+            custom: true,
             icon: (
               <Badge
                 label={`${myEvaluations.length}/${teammates.length}`}
