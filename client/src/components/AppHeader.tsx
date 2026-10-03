@@ -12,6 +12,7 @@ import {
 import { useSafeInsets } from '../utils/useSafeInsets';
 import { useTheme } from '../theme/ThemeContext';
 import { ArrowLeft } from 'lucide-react-native';
+import { Badge } from './Badge';
 
 export interface HeaderAction {
   icon: React.ReactNode;
@@ -21,6 +22,24 @@ export interface HeaderAction {
   badgeCount?: number;
   custom?: boolean;
   style?: StyleProp<ViewStyle>;
+}
+
+function isCustomAction(action: HeaderAction): boolean {
+  if (action.custom) return true;
+  if (!React.isValidElement(action.icon)) return false;
+
+  const iconType = action.icon.type;
+  if (
+    iconType === Badge ||
+    (typeof iconType === 'function' && iconType.name === 'Badge') ||
+    typeof (action.icon.props as any)?.label !== 'undefined'
+  ) {
+    return true;
+  }
+  if (iconType === Text || iconType === View) {
+    return true;
+  }
+  return false;
 }
 
 export interface AppHeaderProps {
@@ -113,7 +132,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
         {actions.length > 0 && (
           <View style={styles.actionsContainer}>
             {actions.map((action, index) => {
-              if (action.custom) {
+              if (isCustomAction(action)) {
                 if (action.onPress) {
                   return (
                     <TouchableOpacity
@@ -123,7 +142,11 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
                       accessibilityLabel={action.accessibilityLabel}
                       onPress={action.onPress}
                       hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                      style={[{ marginLeft: spacing.xs + 2 }, action.style]}
+                      style={[
+                        styles.customActionWrapper,
+                        { marginLeft: spacing.xs + 2 },
+                        action.style,
+                      ]}
                     >
                       {action.icon}
                     </TouchableOpacity>
@@ -134,7 +157,11 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
                     key={index}
                     testID={action.testID}
                     accessibilityLabel={action.accessibilityLabel}
-                    style={[{ marginLeft: spacing.xs + 2, justifyContent: 'center' }, action.style]}
+                    style={[
+                      styles.customActionWrapper,
+                      { marginLeft: spacing.xs + 2 },
+                      action.style,
+                    ]}
                   >
                     {action.icon}
                   </View>
@@ -207,6 +234,10 @@ const styles = StyleSheet.create({
   },
   actionsContainer: {
     flexDirection: 'row',
+    alignItems: 'center',
+  },
+  customActionWrapper: {
+    justifyContent: 'center',
     alignItems: 'center',
   },
   backButton: {

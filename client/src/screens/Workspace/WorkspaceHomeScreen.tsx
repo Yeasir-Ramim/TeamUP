@@ -102,6 +102,7 @@ export const WorkspaceHomeScreen: React.FC<WorkspaceHomeScreenProps> = ({ route,
         onBack={() => navigation?.goBack?.()}
         actions={[
           {
+            custom: true,
             icon: <Badge label="Chat" variant="secondary" />,
             onPress: () => navigation?.navigate('Chat', { projectId, projectTitle }),
             accessibilityLabel: 'Open chat',

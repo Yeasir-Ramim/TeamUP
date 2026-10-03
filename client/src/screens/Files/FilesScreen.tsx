@@ -487,6 +487,7 @@ export const FilesScreen: React.FC<FilesScreenProps> = ({ route, navigation }) =
         onBack={() => navigation?.goBack?.()}
         actions={[
           {
+            custom: true,
             icon: <Text style={{ fontSize: 13, fontWeight: '700', color: colors.primary }}>+ Upload</Text>,
             onPress: () => setUploadSheetVisible(true),
             accessibilityLabel: 'Upload file',
