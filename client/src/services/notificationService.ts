@@ -22,11 +22,43 @@ export const notificationService = {
    */
   getNotifications: async (): Promise<GetNotificationsResponse> => {
     try {
-      const res = await api.get<GetNotificationsResponse>('/notifications');
-      return res || { notifications: [], unreadCount: 0 };
+      const res = await api.get<any>('/notifications');
+      let notifications: AppNotification[] = [];
+      let unreadCount = 0;
+
+      if (Array.isArray(res)) {
+        notifications = res;
+      } else if (res && Array.isArray(res.notifications)) {
+        notifications = res.notifications;
+      }
+
+      if (typeof res?.unreadCount === 'number') {
+        unreadCount = res.unreadCount;
+      } else {
+        try {
+          const countRes = await api.get<{ unreadCount: number }>('/notifications/unread-count');
+          unreadCount = countRes?.unreadCount ?? notifications.filter((n) => !n.isRead).length;
+        } catch {
+          unreadCount = notifications.filter((n) => !n.isRead).length;
+        }
+      }
+
+      return { notifications, unreadCount };
     } catch {
       // Fallback empty list if error
       return { notifications: [], unreadCount: 0 };
+    }
+  },
+
+  /**
+   * Get total unread count for badges
+   */
+  getUnreadCount: async (): Promise<number> => {
+    try {
+      const res = await api.get<{ unreadCount: number }>('/notifications/unread-count');
+      return res?.unreadCount ?? 0;
+    } catch {
+      return 0;
     }
   },
 

@@ -17,6 +17,17 @@ import { Badge } from '../../components/Badge';
 import { Chip } from '../../components/Chip';
 import { StateWrapper } from '../../components/StateWrapper';
 import {
+  Bell,
+  Calendar,
+  Lightbulb,
+  Bookmark,
+  Users,
+  MessageSquare,
+  UserPlus,
+  CheckCircle,
+  X,
+} from 'lucide-react-native';
+import {
   notificationService,
   AppNotification,
 } from '../../services/notificationService';
@@ -99,20 +110,66 @@ export const NotificationsScreen: React.FC<NotificationsScreenProps> = ({
       onNotificationTap(notification);
     } else {
       // Deep-link navigation based on type or data
-      const targetScreen =
-        notification.data?.screen ||
-        (notification.type?.includes('INVITE') || notification.type?.includes('MATCH')
-          ? 'Matching'
-          : notification.type?.includes('MEETING') || notification.type?.includes('SCHEDULER')
-          ? 'Scheduler'
-          : notification.type?.includes('IDEA')
-          ? 'IdeaHub'
-          : notification.type?.includes('BOOKMARK')
-          ? 'Search'
-          : null);
+      const data = notification.data || {};
+      const type = notification.type || '';
 
-      if (targetScreen && navigation && typeof navigation.navigate === 'function') {
-        navigation.navigate(targetScreen);
+      if (data.screen) {
+        if (data.screen === 'Workspace') {
+          navigation.navigate('Workspace', {
+            screen: data.subscreen || 'WorkspaceHome',
+            params: { projectId: data.projectId },
+          });
+          return;
+        }
+        if (data.screen === 'Chat') {
+          navigation.navigate('Workspace', {
+            screen: 'Chat',
+            params: {
+              projectId: data.projectId,
+              initialView: data.type === 'dm' ? 'chat' : undefined,
+              targetUserId: data.targetUserId,
+            },
+          });
+          return;
+        }
+        const navParams =
+          data.params || (data.projectId ? { projectId: data.projectId } : undefined);
+        if (navParams) {
+          navigation.navigate(data.screen, navParams);
+        } else {
+          navigation.navigate(data.screen);
+        }
+        return;
+      }
+
+      if (type.includes('APPLICATION_RECEIVED')) {
+        navigation.navigate('Workspace', {
+          screen: 'Members',
+          params: { projectId: data.projectId },
+        });
+      } else if (type.includes('APPLICATION_ACCEPTED') || type.includes('MEMBER_REMOVED')) {
+        navigation.navigate('Workspace', {
+          screen: 'WorkspaceHome',
+          params: { projectId: data.projectId },
+        });
+      } else if (type.includes('DIRECT_MESSAGE')) {
+        navigation.navigate('Workspace', {
+          screen: 'Chat',
+          params: {
+            projectId: data.projectId,
+            targetUserId: data.senderId,
+          },
+        });
+      } else if (type.includes('PROJECT_INVITE') || (type.includes('INVITE') && data.projectId)) {
+        navigation.navigate('ProjectDetail', { projectId: data.projectId });
+      } else if (type.includes('MATCH') || type.includes('INVITE')) {
+        navigation.navigate('Matching');
+      } else if (type.includes('MEETING') || type.includes('SCHEDULER')) {
+        navigation.navigate('Scheduler');
+      } else if (type.includes('IDEA')) {
+        navigation.navigate('IdeaHub');
+      } else if (type.includes('BOOKMARK')) {
+        navigation.navigate('Search');
       }
     }
   };
@@ -163,12 +220,31 @@ export const NotificationsScreen: React.FC<NotificationsScreenProps> = ({
     return true;
   });
 
-  const getTypeIcon = (type: string) => {
-    if (type.includes('MATCH') || type.includes('INVITE')) return '🤝';
-    if (type.includes('MEETING') || type.includes('SCHEDULER')) return '📅';
-    if (type.includes('IDEA')) return '💡';
-    if (type.includes('BOOKMARK')) return '🔖';
-    return '🔔';
+  const renderTypeIcon = (type: string) => {
+    const iconSize = 18;
+    const iconColor = colors.primary;
+    if (type.includes('APPLICATION_RECEIVED') || type.includes('USER_PLUS')) {
+      return <UserPlus size={iconSize} color={iconColor} />;
+    }
+    if (type.includes('APPLICATION_ACCEPTED')) {
+      return <CheckCircle size={iconSize} color={colors.primary} />;
+    }
+    if (type.includes('DIRECT_MESSAGE') || type.includes('CHAT') || type.includes('MESSAGE')) {
+      return <MessageSquare size={iconSize} color={iconColor} />;
+    }
+    if (type.includes('MATCH') || type.includes('INVITE') || type.includes('MEMBER')) {
+      return <Users size={iconSize} color={iconColor} />;
+    }
+    if (type.includes('MEETING') || type.includes('SCHEDULER')) {
+      return <Calendar size={iconSize} color={iconColor} />;
+    }
+    if (type.includes('IDEA')) {
+      return <Lightbulb size={iconSize} color={iconColor} />;
+    }
+    if (type.includes('BOOKMARK')) {
+      return <Bookmark size={iconSize} color={iconColor} />;
+    }
+    return <Bell size={iconSize} color={iconColor} />;
   };
 
   const formatRelativeTime = (isoString: string) => {
@@ -228,9 +304,9 @@ export const NotificationsScreen: React.FC<NotificationsScreenProps> = ({
         >
           <View style={styles.cardHeader}>
             <View style={styles.typeIconRow}>
-              <Text style={{ fontSize: 20, marginRight: 8 }}>
-                {getTypeIcon(item.type)}
-              </Text>
+              <View style={{ marginRight: 8 }}>
+                {renderTypeIcon(item.type)}
+              </View>
               <Text
                 style={[
                   styles.notificationTitle,
@@ -247,10 +323,11 @@ export const NotificationsScreen: React.FC<NotificationsScreenProps> = ({
             <View style={styles.cardHeaderRight}>
               {isUnread && <View style={[styles.unreadDot, { backgroundColor: colors.primary }]} />}
               <TouchableOpacity
+                accessibilityLabel="Dismiss notification"
                 onPress={() => handleDeleteNotification(item.id)}
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               >
-                <Text style={{ color: colors.onSurfaceVariant, fontSize: 16 }}>✕</Text>
+                <X size={16} color={colors.onSurfaceVariant} />
               </TouchableOpacity>
             </View>
           </View>

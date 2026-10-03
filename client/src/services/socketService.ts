@@ -55,6 +55,7 @@ class SocketService {
   private dmHistoryListeners: Set<
     (payload: { targetUserId: string; messages: DirectMessagePayload[] }) => void
   > = new Set();
+  private notificationListeners: Set<(notification: any) => void> = new Set();
   private status: SocketConnectionStatus = 'disconnected';
 
   constructor() {
@@ -194,6 +195,19 @@ class SocketService {
       }
     );
 
+    this.socket.on('notification', (payload: any) => {
+      const notification = payload?.notification || payload;
+      if (notification) {
+        this.notificationListeners.forEach((listener) => {
+          try {
+            listener(notification);
+          } catch (err) {
+            console.warn('Error in socket notification listener:', err);
+          }
+        });
+      }
+    });
+
     return this.socket;
   }
 
@@ -313,6 +327,13 @@ class SocketService {
     this.dmHistoryListeners.add(listener);
     return () => {
       this.dmHistoryListeners.delete(listener);
+    };
+  }
+
+  public onNotification(listener: (notification: any) => void): () => void {
+    this.notificationListeners.add(listener);
+    return () => {
+      this.notificationListeners.delete(listener);
     };
   }
 

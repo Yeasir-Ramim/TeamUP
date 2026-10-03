@@ -20,10 +20,14 @@ import {
   ExperienceLevel,
   Prisma,
 } from '@prisma/client';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class ProjectsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly notificationsService: NotificationsService,
+  ) {}
 
   /**
    * Helper to verify if a user has LEADER rights on a project
@@ -697,7 +701,7 @@ export class ProjectsService {
         );
       }
       // If rejected earlier, allow re-applying
-      return this.prisma.projectMember.update({
+      const updatedMember = await this.prisma.projectMember.update({
         where: { id: existingMember.id },
         data: {
           status: MemberStatus.PENDING,
@@ -705,9 +709,12 @@ export class ProjectsService {
           joinedAt: new Date(),
         },
       });
+
+      await this.notifyLeadersOfApplication(project, applicantId);
+      return updatedMember;
     }
 
-    return this.prisma.projectMember.create({
+    const newMember = await this.prisma.projectMember.create({
       data: {
         projectId,
         userId: applicantId,
@@ -724,6 +731,56 @@ export class ProjectsService {
         },
       },
     });
+
+    await this.notifyLeadersOfApplication(project, applicantId);
+    return newMember;
+  }
+
+  private async notifyLeadersOfApplication(
+    project: { id: string; title: string; creatorId: string },
+    applicantId: string,
+  ) {
+    try {
+      const applicant = await this.prisma.user.findUnique({
+        where: { id: applicantId },
+        include: { profile: true },
+      });
+      const applicantName =
+        applicant?.profile?.fullName || applicant?.email || 'A student';
+
+      const leaders = await this.prisma.projectMember.findMany({
+        where: {
+          projectId: project.id,
+          role: ProjectRole.LEADER,
+          status: MemberStatus.ACCEPTED,
+        },
+        select: { userId: true },
+      });
+
+      const leaderUserIds = new Set<string>();
+      if (project.creatorId) {
+        leaderUserIds.add(project.creatorId);
+      }
+      leaders.forEach((l) => leaderUserIds.add(l.userId));
+
+      for (const leaderUserId of leaderUserIds) {
+        if (leaderUserId !== applicantId) {
+          await this.notificationsService.notifyUser(leaderUserId, {
+            title: 'New Team Application',
+            body: `${applicantName} applied to join ${project.title}`,
+            type: 'APPLICATION_RECEIVED',
+            data: {
+              projectId: project.id,
+              applicantId,
+              screen: 'Workspace',
+              subscreen: 'Members',
+            },
+          });
+        }
+      }
+    } catch {
+      // Non-blocking notification dispatch
+    }
   }
 
   /**
@@ -795,14 +852,11 @@ export class ProjectsService {
         },
       });
 
-      await this.prisma.notification.create({
-        data: {
-          userId: dto.userId,
-          title: 'Project Invitation',
-          body: `You have been invited to join project ${project.title}`,
-          type: 'INVITE',
-          data: { projectId },
-        },
+      await this.notificationsService.notifyUser(dto.userId, {
+        title: 'Project Invitation',
+        body: `You have been invited to join project ${project.title}`,
+        type: 'PROJECT_INVITE',
+        data: { projectId, screen: 'ProjectDetail' },
       });
 
       return updated;
@@ -817,14 +871,11 @@ export class ProjectsService {
       },
     });
 
-    await this.prisma.notification.create({
-      data: {
-        userId: dto.userId,
-        title: 'Project Invitation',
-        body: `You have been invited to join project ${project.title}`,
-        type: 'INVITE',
-        data: { projectId },
-      },
+    await this.notificationsService.notifyUser(dto.userId, {
+      title: 'Project Invitation',
+      body: `You have been invited to join project ${project.title}`,
+      type: 'PROJECT_INVITE',
+      data: { projectId, screen: 'ProjectDetail' },
     });
 
     return created;
@@ -936,7 +987,7 @@ export class ProjectsService {
       );
     }
 
-    return this.prisma.projectMember.update({
+    const updated = await this.prisma.projectMember.update({
       where: { id: memberId },
       data: {
         status: dto.status ?? member.status,
@@ -957,6 +1008,38 @@ export class ProjectsService {
         },
       },
     });
+
+    if (
+      dto.status === MemberStatus.ACCEPTED &&
+      member.status !== MemberStatus.ACCEPTED
+    ) {
+      try {
+        await this.notificationsService.notifyUser(member.userId, {
+          title: 'Application Accepted',
+          body: `Your application to join ${project.title} has been accepted`,
+          type: 'APPLICATION_ACCEPTED',
+          data: { projectId, screen: 'Workspace' },
+        });
+      } catch {
+        // Non-blocking
+      }
+    } else if (
+      dto.status === MemberStatus.REJECTED &&
+      member.status !== MemberStatus.REJECTED
+    ) {
+      try {
+        await this.notificationsService.notifyUser(member.userId, {
+          title: 'Application Update',
+          body: `Your application to join ${project.title} was declined`,
+          type: 'APPLICATION_REJECTED',
+          data: { projectId },
+        });
+      } catch {
+        // Non-blocking
+      }
+    }
+
+    return updated;
   }
 
   /**
@@ -1021,6 +1104,33 @@ export class ProjectsService {
     await this.prisma.projectMember.delete({
       where: { id: memberId },
     });
+
+    try {
+      if (isSelf) {
+        const user = await this.prisma.user.findUnique({
+          where: { id: requesterId },
+          include: { profile: true },
+        });
+        const userName = user?.profile?.fullName || user?.email || 'A member';
+        if (project.creatorId && project.creatorId !== requesterId) {
+          await this.notificationsService.notifyUser(project.creatorId, {
+            title: 'Member Left Project',
+            body: `${userName} has left ${project.title}`,
+            type: 'MEMBER_LEFT',
+            data: { projectId, memberId },
+          });
+        }
+      } else {
+        await this.notificationsService.notifyUser(member.userId, {
+          title: 'Removed from Project',
+          body: `You were removed from ${project.title}`,
+          type: 'MEMBER_REMOVED',
+          data: { projectId },
+        });
+      }
+    } catch {
+      // Non-blocking
+    }
 
     return { message: 'Member removed successfully' };
   }
