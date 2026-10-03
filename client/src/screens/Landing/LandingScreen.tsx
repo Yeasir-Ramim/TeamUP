@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -6,38 +6,57 @@ import {
   ScrollView,
   TouchableOpacity,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import {
   Users,
   Calendar,
   GitBranch,
-  Sparkles,
-  CheckCircle2,
-  ArrowRight,
-  Code2,
-  Terminal,
-  ShieldCheck,
   Layers,
   Sun,
   Moon,
-  Clock,
-  TrendingUp,
-  Star,
-  Zap,
+  ArrowRight,
+  Code2,
+  CheckCircle2,
+  Sparkles,
+  Search,
 } from 'lucide-react-native';
 import { useTheme } from '../../theme/ThemeContext';
-import { Button } from '../../components/Button';
-import { Badge } from '../../components/Badge';
-import { Chip } from '../../components/Chip';
+import { projectService, Project } from '../../services/projectService';
 
 export interface LandingScreenProps {
   navigation: any;
 }
 
 export const LandingScreen: React.FC<LandingScreenProps> = ({ navigation }) => {
-  const { colors, typography, spacing, isDark, toggleTheme } = useTheme();
-  const [activePreviewTab, setActivePreviewTab] = useState<'MATCH' | 'SCHEDULER' | 'GITHUB'>('MATCH');
+  const { colors, isDark, toggleTheme } = useTheme();
+  const [liveProjects, setLiveProjects] = useState<Project[]>([]);
+  const [loadingProjects, setLoadingProjects] = useState<boolean>(true);
+
+  useEffect(() => {
+    let isMounted = true;
+    projectService
+      .getProjects({ limit: 4 })
+      .then((data) => {
+        if (isMounted) {
+          setLiveProjects(Array.isArray(data) ? data.slice(0, 4) : []);
+        }
+      })
+      .catch(() => {
+        if (isMounted) {
+          setLiveProjects([]);
+        }
+      })
+      .finally(() => {
+        if (isMounted) {
+          setLoadingProjects(false);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const handleNavigateRegister = () => {
     navigation.navigate('Register');
@@ -47,69 +66,84 @@ export const LandingScreen: React.FC<LandingScreenProps> = ({ navigation }) => {
     navigation.navigate('Login');
   };
 
-  const isWeb = Platform.OS === 'web';
+  const handleNavigateMarketplace = () => {
+    navigation.navigate('Marketplace');
+  };
+
+  const handleSelectProject = (projectId: string) => {
+    navigation.navigate('ProjectDetail', { projectId });
+  };
+
+  const surfaceBg = isDark ? '#121215' : '#FFFFFF';
+  const surfaceBorder = isDark ? '#27272A' : '#E4E4E7';
+  const textMutedColor = isDark ? '#A1A1AA' : '#71717A';
+  const textPrimaryColor = isDark ? '#FAFAFA' : '#09090B';
 
   return (
     <ScrollView
       style={[
         styles.container,
         {
-          backgroundColor: isDark ? '#090D16' : '#F8FAFC',
+          backgroundColor: isDark ? '#09090B' : '#FFFFFF',
         },
       ]}
       contentContainerStyle={styles.contentContainer}
       showsVerticalScrollIndicator={false}
     >
-      {/* Background Ambient Glow Orbs */}
-      <View style={styles.ambientGlowContainer} pointerEvents="none">
+      {/* Ambient Lighting Accents */}
+      <View style={styles.ambientGlowWrapper} pointerEvents="none">
         <View
           style={[
-            styles.glowOrbPrimary,
+            styles.ambientGlowOrbPrimary,
             {
-              backgroundColor: isDark ? 'rgba(99, 102, 241, 0.15)' : 'rgba(99, 102, 241, 0.08)',
+              backgroundColor: isDark
+                ? 'rgba(99, 102, 241, 0.12)'
+                : 'rgba(99, 102, 241, 0.05)',
             },
           ]}
         />
         <View
           style={[
-            styles.glowOrbSecondary,
+            styles.ambientGlowOrbSecondary,
             {
-              backgroundColor: isDark ? 'rgba(20, 184, 166, 0.12)' : 'rgba(20, 184, 166, 0.06)',
+              backgroundColor: isDark
+                ? 'rgba(20, 184, 166, 0.08)'
+                : 'rgba(20, 184, 166, 0.04)',
             },
           ]}
         />
       </View>
 
-      {/* Floating Glassmorphic Top Navbar */}
+      {/* Navigation Header */}
       <View
         style={[
           styles.navbar,
           {
-            backgroundColor: isDark ? 'rgba(15, 23, 42, 0.85)' : 'rgba(255, 255, 255, 0.9)',
-            borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.08)',
+            backgroundColor: isDark
+              ? 'rgba(18, 18, 21, 0.85)'
+              : 'rgba(255, 255, 255, 0.92)',
+            borderColor: surfaceBorder,
           },
         ]}
       >
         <View style={styles.brandRow}>
-          <LinearGradient
-            colors={['#6366F1', '#4F46E5']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.logoBadge}
+          <View
+            style={[
+              styles.logoBadge,
+              {
+                backgroundColor: isDark ? '#27272A' : '#F4F4F5',
+                borderColor: surfaceBorder,
+              },
+            ]}
           >
-            <Layers size={18} color="#FFFFFF" />
-          </LinearGradient>
-          <View style={{ marginLeft: 10 }}>
-            <Text
-              style={[
-                styles.brandTitle,
-                { color: isDark ? '#FFFFFF' : '#0F172A' },
-              ]}
-            >
+            <Layers size={18} color={isDark ? '#FAFAFA' : '#18181B'} />
+          </View>
+          <View style={styles.brandTextGroup}>
+            <Text style={[styles.brandTitle, { color: textPrimaryColor }]}>
               TeamUp
             </Text>
-            <Text style={[styles.brandSubtitle, { color: isDark ? '#94A3B8' : '#64748B' }]}>
-              Campus Dev Hub
+            <Text style={[styles.brandSubtitle, { color: textMutedColor }]}>
+              Campus Platform
             </Text>
           </View>
         </View>
@@ -117,10 +151,26 @@ export const LandingScreen: React.FC<LandingScreenProps> = ({ navigation }) => {
         <View style={styles.navActions}>
           <TouchableOpacity
             style={[
+              styles.navMarketplaceBtn,
+              {
+                backgroundColor: isDark ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0, 0, 0, 0.03)',
+                borderColor: surfaceBorder,
+              },
+            ]}
+            onPress={handleNavigateMarketplace}
+          >
+            <Search size={14} color={textMutedColor} />
+            <Text style={[styles.navMarketplaceText, { color: textPrimaryColor }]}>
+              Marketplace
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[
               styles.themeToggleBtn,
               {
-                backgroundColor: isDark ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.04)',
-                borderColor: isDark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.08)',
+                backgroundColor: isDark ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0, 0, 0, 0.03)',
+                borderColor: surfaceBorder,
               },
             ]}
             onPress={toggleTheme}
@@ -131,14 +181,6 @@ export const LandingScreen: React.FC<LandingScreenProps> = ({ navigation }) => {
             ) : (
               <Moon size={15} color="#6366F1" />
             )}
-            <Text
-              style={[
-                styles.themeToggleText,
-                { color: isDark ? '#F1F5F9' : '#1E293B', marginLeft: 6 },
-              ]}
-            >
-              {isDark ? 'Light' : 'Dark'}
-            </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -146,1106 +188,826 @@ export const LandingScreen: React.FC<LandingScreenProps> = ({ navigation }) => {
             style={[
               styles.navLoginBtn,
               {
-                borderColor: isDark ? 'rgba(255, 255, 255, 0.15)' : 'rgba(0, 0, 0, 0.12)',
+                borderColor: surfaceBorder,
+                backgroundColor: isDark ? 'transparent' : '#FFFFFF',
               },
             ]}
           >
-            <Text
-              style={[
-                styles.navLoginText,
-                { color: isDark ? '#F1F5F9' : '#0F172A' },
-              ]}
-            >
+            <Text style={[styles.navLoginText, { color: textPrimaryColor }]}>
               Log In
             </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             onPress={handleNavigateRegister}
-            activeOpacity={0.85}
+            style={[
+              styles.navJoinBtn,
+              {
+                backgroundColor: isDark ? '#FAFAFA' : '#09090B',
+              },
+            ]}
+            activeOpacity={0.88}
           >
-            <LinearGradient
-              colors={['#6366F1', '#4338CA']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.navJoinGradient}
+            <Text
+              style={[
+                styles.navJoinText,
+                { color: isDark ? '#09090B' : '#FAFAFA' },
+              ]}
             >
-              <Text style={styles.navJoinText}>Join TeamUp</Text>
-              <ArrowRight size={14} color="#FFFFFF" style={{ marginLeft: 4 }} />
-            </LinearGradient>
+              Join TeamUp
+            </Text>
           </TouchableOpacity>
         </View>
       </View>
 
       {/* Hero Section */}
       <View style={styles.heroSection}>
-        {/* Glowing Live Beta Pill */}
         <View
           style={[
-            styles.heroPillContainer,
+            styles.heroPill,
             {
-              backgroundColor: isDark ? 'rgba(99, 102, 241, 0.12)' : 'rgba(99, 102, 241, 0.08)',
-              borderColor: isDark ? 'rgba(99, 102, 241, 0.3)' : 'rgba(99, 102, 241, 0.2)',
+              backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.02)',
+              borderColor: surfaceBorder,
             },
           ]}
         >
-          <View style={styles.livePulseDot} />
-          <Text
-            style={[
-              styles.heroPillText,
-              { color: isDark ? '#A5B4FC' : '#4F46E5' },
-            ]}
-          >
-            Built for University Creators & Hackathons
+          <View style={styles.pulseDot} />
+          <Text style={[styles.heroPillText, { color: textPrimaryColor }]}>
+            Campus Collaboration Platform
           </Text>
         </View>
 
-        {/* Main Headline */}
-        <Text
-          style={[
-            styles.heroHeadline,
-            { color: isDark ? '#FFFFFF' : '#0F172A' },
-          ]}
-        >
-          Your next project starts with{' '}
-          <Text style={styles.gradientHeadlineHighlight}>the right team.</Text>
+        <Text style={[styles.heroHeadline, { color: textPrimaryColor }]}>
+          Your next project starts with the right team.
         </Text>
 
-        {/* Hero Subtitle */}
-        <Text
-          style={[
-            styles.heroSubtitle,
-            { color: isDark ? '#94A3B8' : '#475569' },
-          ]}
-        >
+        <Text style={[styles.heroSubtitle, { color: textMutedColor }]}>
           Connect with classmates who complement your stack, match your schedule, and actually want to build great software together.
         </Text>
 
-        {/* Hero CTAs */}
-        <View style={styles.heroCtaRow}>
+        <View style={styles.heroActionsRow}>
           <TouchableOpacity
             onPress={handleNavigateRegister}
-            activeOpacity={0.88}
-          >
-            <LinearGradient
-              colors={['#6366F1', '#4F46E5']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.heroPrimaryBtn}
-            >
-              <Text style={styles.heroPrimaryBtnText}>Join TeamUp</Text>
-              <ArrowRight size={16} color="#FFFFFF" style={{ marginLeft: 8 }} />
-            </LinearGradient>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            onPress={handleNavigateLogin}
             style={[
-              styles.heroSecondaryBtn,
+              styles.primaryActionBtn,
               {
-                backgroundColor: isDark ? 'rgba(30, 41, 59, 0.6)' : 'rgba(255, 255, 255, 0.9)',
-                borderColor: isDark ? 'rgba(255, 255, 255, 0.15)' : 'rgba(0, 0, 0, 0.1)',
+                backgroundColor: isDark ? '#FAFAFA' : '#09090B',
               },
             ]}
+            activeOpacity={0.88}
           >
             <Text
               style={[
-                styles.heroSecondaryBtnText,
-                { color: isDark ? '#F1F5F9' : '#1E293B' },
+                styles.primaryActionText,
+                { color: isDark ? '#09090B' : '#FAFAFA' },
               ]}
             >
-              Log In
+              Join TeamUp
+            </Text>
+            <ArrowRight
+              size={16}
+              color={isDark ? '#09090B' : '#FAFAFA'}
+              style={{ marginLeft: 8 }}
+            />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={handleNavigateMarketplace}
+            style={[
+              styles.secondaryActionBtn,
+              {
+                backgroundColor: surfaceBg,
+                borderColor: surfaceBorder,
+              },
+            ]}
+            activeOpacity={0.85}
+          >
+            <Text
+              style={[
+                styles.secondaryActionText,
+                { color: textPrimaryColor },
+              ]}
+            >
+              Explore Marketplace
             </Text>
           </TouchableOpacity>
         </View>
 
-        {/* Feature Highlight Tags */}
-        <View style={styles.highlightRow}>
+        <View style={styles.heroFeatureTagsRow}>
           <View
             style={[
-              styles.highlightTag,
+              styles.heroFeatureTag,
               {
-                backgroundColor: isDark ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0, 0, 0, 0.03)',
-                borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.06)',
+                backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.02)',
+                borderColor: surfaceBorder,
               },
             ]}
           >
             <Code2 size={13} color="#6366F1" style={{ marginRight: 6 }} />
-            <Text style={[styles.highlightTagText, { color: isDark ? '#E2E8F0' : '#334155' }]}>
+            <Text style={[styles.heroFeatureTagText, { color: textPrimaryColor }]}>
               Stack Compatibility
             </Text>
           </View>
 
           <View
             style={[
-              styles.highlightTag,
+              styles.heroFeatureTag,
               {
-                backgroundColor: isDark ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0, 0, 0, 0.03)',
-                borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.06)',
+                backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.02)',
+                borderColor: surfaceBorder,
               },
             ]}
           >
             <GitBranch size={13} color="#14B8A6" style={{ marginRight: 6 }} />
-            <Text style={[styles.highlightTagText, { color: isDark ? '#E2E8F0' : '#334155' }]}>
+            <Text style={[styles.heroFeatureTagText, { color: textPrimaryColor }]}>
               GitHub Activity Sync
             </Text>
           </View>
 
           <View
             style={[
-              styles.highlightTag,
+              styles.heroFeatureTag,
               {
-                backgroundColor: isDark ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0, 0, 0, 0.03)',
-                borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.06)',
+                backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.02)',
+                borderColor: surfaceBorder,
               },
             ]}
           >
             <Calendar size={13} color="#F43F5E" style={{ marginRight: 6 }} />
-            <Text style={[styles.highlightTagText, { color: isDark ? '#E2E8F0' : '#334155' }]}>
+            <Text style={[styles.heroFeatureTagText, { color: textPrimaryColor }]}>
               Conflict-Free Scheduling
             </Text>
           </View>
 
           <View
             style={[
-              styles.highlightTag,
+              styles.heroFeatureTag,
               {
-                backgroundColor: isDark ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0, 0, 0, 0.03)',
-                borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.06)',
+                backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.02)',
+                borderColor: surfaceBorder,
               },
             ]}
           >
-            <Zap size={13} color="#EAB308" style={{ marginRight: 6 }} />
-            <Text style={[styles.highlightTagText, { color: isDark ? '#E2E8F0' : '#334155' }]}>
+            <Sparkles size={13} color="#EAB308" style={{ marginRight: 6 }} />
+            <Text style={[styles.heroFeatureTagText, { color: textPrimaryColor }]}>
               Capstone & Hackathons
             </Text>
           </View>
         </View>
       </View>
 
-      {/* High-Impact Statistics Banner */}
-      <View
-        style={[
-          styles.statsBanner,
-          {
-            backgroundColor: isDark ? 'rgba(15, 23, 42, 0.7)' : 'rgba(255, 255, 255, 0.8)',
-            borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.06)',
-          },
-        ]}
-      >
-        <View style={styles.statCol}>
-          <Text style={[styles.statValue, { color: '#6366F1' }]}>3.4x</Text>
-          <Text style={[styles.statLabel, { color: isDark ? '#94A3B8' : '#64748B' }]}>
-            Faster Team Assembly
+      {/* Live Projects From Backend */}
+      <View style={styles.sectionContainer}>
+        <View style={styles.sectionHeader}>
+          <Text style={[styles.sectionEyebrow, { color: '#6366F1' }]}>
+            LIVE PROJECTS
+          </Text>
+          <Text style={[styles.sectionTitle, { color: textPrimaryColor }]}>
+            Active projects seeking teammates
+          </Text>
+          <Text style={[styles.sectionSubtitle, { color: textMutedColor }]}>
+            Explore real university projects organized by domains and required technical skills.
           </Text>
         </View>
-        <View style={[styles.statDivider, { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)' }]} />
-        <View style={styles.statCol}>
-          <Text style={[styles.statValue, { color: '#14B8A6' }]}>95%+</Text>
-          <Text style={[styles.statLabel, { color: isDark ? '#94A3B8' : '#64748B' }]}>
-            Match Compatibility
-          </Text>
-        </View>
-        <View style={[styles.statDivider, { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)' }]} />
-        <View style={styles.statCol}>
-          <Text style={[styles.statValue, { color: '#F43F5E' }]}>100%</Text>
-          <Text style={[styles.statLabel, { color: isDark ? '#94A3B8' : '#64748B' }]}>
-            Verified GitHub Data
-          </Text>
-        </View>
-        <View style={[styles.statDivider, { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)' }]} />
-        <View style={styles.statCol}>
-          <Text style={[styles.statValue, { color: '#EAB308' }]}>Zero</Text>
-          <Text style={[styles.statLabel, { color: isDark ? '#94A3B8' : '#64748B' }]}>
-            Schedule Clashes
-          </Text>
-        </View>
-      </View>
 
-      {/* Mac-Style Live Interactive Product Window */}
-      <View style={styles.windowSection}>
-        <View
-          style={[
-            styles.macWindow,
-            {
-              backgroundColor: isDark ? '#0F172A' : '#FFFFFF',
-              borderColor: isDark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.1)',
-            },
-          ]}
-        >
-          {/* Mac Window Header Bar */}
+        {loadingProjects ? (
+          <View style={styles.loadingWrap}>
+            <ActivityIndicator size="small" color="#6366F1" />
+            <Text style={[styles.loadingText, { color: textMutedColor }]}>
+              Loading active campus projects...
+            </Text>
+          </View>
+        ) : liveProjects.length > 0 ? (
+          <View style={styles.projectsGrid}>
+            {liveProjects.map((project) => {
+              const creatorName =
+                project.creator?.profile?.fullName ||
+                project.creator?.email ||
+                'Project Creator';
+              const memberCount = project.members?.length || 1;
+
+              return (
+                <TouchableOpacity
+                  key={project.id}
+                  style={[
+                    styles.projectCard,
+                    {
+                      backgroundColor: surfaceBg,
+                      borderColor: surfaceBorder,
+                    },
+                  ]}
+                  activeOpacity={0.8}
+                  onPress={() => handleSelectProject(project.id)}
+                >
+                  <View style={styles.projectCardTopRow}>
+                    <View style={styles.projectPillsRow}>
+                      {project.domain ? (
+                        <View
+                          style={[
+                            styles.domainPill,
+                            {
+                              backgroundColor: isDark ? '#1C1917' : '#F4F4F5',
+                              borderColor: surfaceBorder,
+                            },
+                          ]}
+                        >
+                          <Text style={[styles.domainPillText, { color: textPrimaryColor }]}>
+                            {project.domain}
+                          </Text>
+                        </View>
+                      ) : null}
+
+                      {project.semester ? (
+                        <View
+                          style={[
+                            styles.semesterPill,
+                            {
+                              backgroundColor: isDark ? '#18181B' : '#F4F4F5',
+                              borderColor: surfaceBorder,
+                            },
+                          ]}
+                        >
+                          <Text style={[styles.semesterPillText, { color: textMutedColor }]}>
+                            {project.semester}
+                          </Text>
+                        </View>
+                      ) : null}
+                    </View>
+
+                    <View
+                      style={[
+                        styles.memberCountBadge,
+                        {
+                          backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)',
+                          borderColor: surfaceBorder,
+                        },
+                      ]}
+                    >
+                      <Users size={12} color={textMutedColor} style={{ marginRight: 4 }} />
+                      <Text style={[styles.memberCountText, { color: textMutedColor }]}>
+                        {memberCount} / {project.maxMembers}
+                      </Text>
+                    </View>
+                  </View>
+
+                  <Text
+                    style={[styles.projectTitleText, { color: textPrimaryColor }]}
+                    numberOfLines={1}
+                  >
+                    {project.title}
+                  </Text>
+
+                  <Text
+                    style={[styles.projectDescText, { color: textMutedColor }]}
+                    numberOfLines={2}
+                  >
+                    {project.description || 'No description provided.'}
+                  </Text>
+
+                  {/* Required Skills */}
+                  {project.requiredSkills && project.requiredSkills.length > 0 ? (
+                    <View style={styles.projectSkillsRow}>
+                      {project.requiredSkills.slice(0, 4).map((req, idx) => {
+                        const name =
+                          req.skill?.name || req.skillName || 'Skill';
+                        return (
+                          <View
+                            key={idx}
+                            style={[
+                              styles.skillChip,
+                              {
+                                backgroundColor: isDark
+                                  ? 'rgba(99, 102, 241, 0.08)'
+                                  : 'rgba(99, 102, 241, 0.05)',
+                                borderColor: isDark
+                                  ? 'rgba(99, 102, 241, 0.2)'
+                                  : 'rgba(99, 102, 241, 0.15)',
+                              },
+                            ]}
+                          >
+                            <Text style={styles.skillChipText}>{name}</Text>
+                          </View>
+                        );
+                      })}
+                    </View>
+                  ) : null}
+
+                  {/* Project Creator Footer */}
+                  <View
+                    style={[
+                      styles.projectFooterRow,
+                      {
+                        borderTopColor: surfaceBorder,
+                      },
+                    ]}
+                  >
+                    <View style={styles.creatorInfoRow}>
+                      <View
+                        style={[
+                          styles.creatorAvatar,
+                          {
+                            backgroundColor: isDark ? '#27272A' : '#E4E4E7',
+                          },
+                        ]}
+                      >
+                        <Text style={[styles.creatorAvatarText, { color: textPrimaryColor }]}>
+                          {creatorName.charAt(0).toUpperCase()}
+                        </Text>
+                      </View>
+                      <Text
+                        style={[styles.creatorNameText, { color: textMutedColor }]}
+                        numberOfLines={1}
+                      >
+                        {creatorName}
+                      </Text>
+                    </View>
+
+                    <View style={styles.viewProjectRow}>
+                      <Text style={[styles.viewProjectText, { color: textPrimaryColor }]}>
+                        View Project
+                      </Text>
+                      <ArrowRight size={13} color={textPrimaryColor} style={{ marginLeft: 4 }} />
+                    </View>
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        ) : (
           <View
             style={[
-              styles.macWindowHeader,
+              styles.emptyProjectsCard,
               {
-                borderBottomColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.06)',
+                backgroundColor: surfaceBg,
+                borderColor: surfaceBorder,
               },
             ]}
           >
-            <View style={styles.macDotsRow}>
-              <View style={[styles.macDot, { backgroundColor: '#EF4444' }]} />
-              <View style={[styles.macDot, { backgroundColor: '#F59E0B' }]} />
-              <View style={[styles.macDot, { backgroundColor: '#10B981' }]} />
-            </View>
-
-            {/* Address Pill */}
-            <View
+            <Layers size={28} color={textMutedColor} />
+            <Text style={[styles.emptyProjectsTitle, { color: textPrimaryColor }]}>
+              No active projects yet
+            </Text>
+            <Text style={[styles.emptyProjectsDesc, { color: textMutedColor }]}>
+              Be the first to propose a project and assemble your team on campus.
+            </Text>
+            <TouchableOpacity
+              onPress={handleNavigateRegister}
               style={[
-                styles.macAddressPill,
-                {
-                  backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.04)',
-                },
+                styles.createProjectBtn,
+                { backgroundColor: isDark ? '#FAFAFA' : '#09090B' },
               ]}
             >
               <Text
                 style={[
-                  styles.macAddressText,
-                  { color: isDark ? '#64748B' : '#94A3B8' },
+                  styles.createProjectBtnText,
+                  { color: isDark ? '#09090B' : '#FAFAFA' },
                 ]}
               >
-                teamup.edu/match?stack=React+Native,TypeScript
+                Create a Project
               </Text>
-            </View>
-
-            {/* Preview Window Tabs */}
-            <View style={styles.macTabsRow}>
-              <TouchableOpacity
-                onPress={() => setActivePreviewTab('MATCH')}
-                style={[
-                  styles.macTab,
-                  activePreviewTab === 'MATCH' && {
-                    backgroundColor: isDark ? 'rgba(99, 102, 241, 0.2)' : 'rgba(99, 102, 241, 0.1)',
-                    borderColor: '#6366F1',
-                  },
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.macTabText,
-                    {
-                      color:
-                        activePreviewTab === 'MATCH'
-                          ? '#6366F1'
-                          : isDark
-                          ? '#94A3B8'
-                          : '#64748B',
-                    },
-                  ]}
-                >
-                  Candidate Match
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                onPress={() => setActivePreviewTab('SCHEDULER')}
-                style={[
-                  styles.macTab,
-                  activePreviewTab === 'SCHEDULER' && {
-                    backgroundColor: isDark ? 'rgba(20, 184, 166, 0.2)' : 'rgba(20, 184, 166, 0.1)',
-                    borderColor: '#14B8A6',
-                  },
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.macTabText,
-                    {
-                      color:
-                        activePreviewTab === 'SCHEDULER'
-                          ? '#14B8A6'
-                          : isDark
-                          ? '#94A3B8'
-                          : '#64748B',
-                    },
-                  ]}
-                >
-                  Slot Voting
-                </Text>
-              </TouchableOpacity>
-            </View>
+            </TouchableOpacity>
           </View>
+        )}
 
-          {/* Mac Window Content Body */}
-          <View style={styles.macWindowBody}>
-            {activePreviewTab === 'MATCH' ? (
-              <View style={styles.previewSplitView}>
-                {/* Left: Candidate Profile Card */}
-                <View
-                  style={[
-                    styles.previewCandidateCol,
-                    {
-                      backgroundColor: isDark ? '#1E293B' : '#F8FAFC',
-                      borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.06)',
-                    },
-                  ]}
-                >
-                  <View style={styles.candidateHeaderRow}>
-                    <View style={styles.candidateAvatarWrap}>
-                      <LinearGradient
-                        colors={['#6366F1', '#A855F7']}
-                        style={styles.candidateAvatarGradient}
-                      >
-                        <Text style={styles.candidateAvatarInitials}>AJ</Text>
-                      </LinearGradient>
-                      <View style={styles.onlineStatusBadge} />
-                    </View>
-
-                    <View style={{ flex: 1, marginLeft: 14 }}>
-                      <View style={styles.candidateNameRow}>
-                        <Text
-                          style={[
-                            styles.candidateNameText,
-                            { color: isDark ? '#FFFFFF' : '#0F172A' },
-                          ]}
-                        >
-                          Alice Johnson
-                        </Text>
-                        <View style={styles.verifiedBadge}>
-                          <ShieldCheck size={14} color="#10B981" />
-                        </View>
-                      </View>
-                      <Text
-                        style={[
-                          styles.candidateMetaText,
-                          { color: isDark ? '#94A3B8' : '#64748B' },
-                        ]}
-                      >
-                        Computer Science • Senior • Available 15h/week
-                      </Text>
-                    </View>
-
-                    {/* Match Score Gauge */}
-                    <View style={styles.matchScoreBadgeWrap}>
-                      <Text style={styles.matchScoreNumber}>95%</Text>
-                      <Text style={styles.matchScoreLabel}>Match</Text>
-                    </View>
-                  </View>
-
-                  <Text
-                    style={[
-                      styles.candidateBioText,
-                      { color: isDark ? '#CBD5E1' : '#334155' },
-                    ]}
-                  >
-                    Fullstack React Native and Node developer. Passionate about building clean mobile architectures, offline-first sync, and developer tooling.
-                  </Text>
-
-                  {/* Skills Grid */}
-                  <View style={styles.candidateSkillsRow}>
-                    <View style={styles.skillItemPillPrimary}>
-                      <Text style={styles.skillItemTextPrimary}>#React Native</Text>
-                      <View style={styles.skillLevelDot} />
-                    </View>
-                    <View style={styles.skillItemPillPrimary}>
-                      <Text style={styles.skillItemTextPrimary}>#TypeScript</Text>
-                      <View style={styles.skillLevelDot} />
-                    </View>
-                    <View style={styles.skillItemPillSecondary}>
-                      <Text style={styles.skillItemTextSecondary}>#Node.js</Text>
-                    </View>
-                    <View style={styles.skillItemPillSecondary}>
-                      <Text style={styles.skillItemTextSecondary}>#PostgreSQL</Text>
-                    </View>
-                  </View>
-
-                  {/* GitHub Activity Strip */}
-                  <View
-                    style={[
-                      styles.githubActivityStrip,
-                      {
-                        backgroundColor: isDark ? 'rgba(15, 23, 42, 0.6)' : '#FFFFFF',
-                        borderColor: isDark ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.05)',
-                      },
-                    ]}
-                  >
-                    <View style={styles.githubStatsMeta}>
-                      <GitBranch size={14} color="#6366F1" />
-                      <Text
-                        style={[
-                          styles.githubUsernameText,
-                          { color: isDark ? '#E2E8F0' : '#1E293B' },
-                        ]}
-                      >
-                        @alicejohnson
-                      </Text>
-                      <Text style={{ color: isDark ? '#64748B' : '#94A3B8', fontSize: 12 }}>
-                        • 24 repos • 350 commits this year
-                      </Text>
-                    </View>
-
-                    {/* Commit Activity Heat Dots */}
-                    <View style={styles.heatDotsGrid}>
-                      {[
-                        '#10B981', '#10B981', '#34D399', '#10B981',
-                        '#059669', '#34D399', '#10B981', '#059669',
-                        '#10B981', '#34D399', '#059669', '#10B981',
-                      ].map((c, i) => (
-                        <View
-                          key={i}
-                          style={[styles.heatDot, { backgroundColor: c }]}
-                        />
-                      ))}
-                    </View>
-                  </View>
-
-                  {/* Invite CTA Button */}
-                  <View style={{ marginTop: 16 }}>
-                    <TouchableOpacity
-                      onPress={handleNavigateRegister}
-                      activeOpacity={0.85}
-                    >
-                      <LinearGradient
-                        colors={['#6366F1', '#4F46E5']}
-                        style={styles.candidateInviteBtn}
-                      >
-                        <Text style={styles.candidateInviteBtnText}>Invite to Team</Text>
-                      </LinearGradient>
-                    </TouchableOpacity>
-                  </View>
-                </View>
-
-                {/* Right: Compatibility Breakdown */}
-                <View
-                  style={[
-                    styles.previewBreakdownCol,
-                    {
-                      backgroundColor: isDark ? '#1E293B' : '#F8FAFC',
-                      borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.06)',
-                    },
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.breakdownHeading,
-                      { color: isDark ? '#FFFFFF' : '#0F172A' },
-                    ]}
-                  >
-                    Scoring Breakdown
-                  </Text>
-                  <Text
-                    style={[
-                      styles.breakdownSubhead,
-                      { color: isDark ? '#94A3B8' : '#64748B' },
-                    ]}
-                  >
-                    How the recommendation engine ranks candidates
-                  </Text>
-
-                  {/* Meter 1: Skill Overlap */}
-                  <View style={styles.meterItem}>
-                    <View style={styles.meterLabelRow}>
-                      <Text style={[styles.meterLabel, { color: isDark ? '#CBD5E1' : '#334155' }]}>
-                        Skill Overlap (40% weight)
-                      </Text>
-                      <Text style={[styles.meterPct, { color: '#6366F1' }]}>98%</Text>
-                    </View>
-                    <View
-                      style={[
-                        styles.meterTrack,
-                        { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)' },
-                      ]}
-                    >
-                      <View style={[styles.meterFill, { width: '98%', backgroundColor: '#6366F1' }]} />
-                    </View>
-                  </View>
-
-                  {/* Meter 2: Experience Match */}
-                  <View style={styles.meterItem}>
-                    <View style={styles.meterLabelRow}>
-                      <Text style={[styles.meterLabel, { color: isDark ? '#CBD5E1' : '#334155' }]}>
-                        Experience Level (30% weight)
-                      </Text>
-                      <Text style={[styles.meterPct, { color: '#14B8A6' }]}>92%</Text>
-                    </View>
-                    <View
-                      style={[
-                        styles.meterTrack,
-                        { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)' },
-                      ]}
-                    >
-                      <View style={[styles.meterFill, { width: '92%', backgroundColor: '#14B8A6' }]} />
-                    </View>
-                  </View>
-
-                  {/* Meter 3: GitHub Activity */}
-                  <View style={styles.meterItem}>
-                    <View style={styles.meterLabelRow}>
-                      <Text style={[styles.meterLabel, { color: isDark ? '#CBD5E1' : '#334155' }]}>
-                        GitHub Code Activity (30% weight)
-                      </Text>
-                      <Text style={[styles.meterPct, { color: '#F43F5E' }]}>95%</Text>
-                    </View>
-                    <View
-                      style={[
-                        styles.meterTrack,
-                        { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)' },
-                      ]}
-                    >
-                      <View style={[styles.meterFill, { width: '95%', backgroundColor: '#F43F5E' }]} />
-                    </View>
-                  </View>
-
-                  {/* Verified Quality Guarantee */}
-                  <View
-                    style={[
-                      styles.verifiedBanner,
-                      {
-                        backgroundColor: isDark ? 'rgba(16, 185, 129, 0.1)' : 'rgba(16, 185, 129, 0.08)',
-                        borderColor: isDark ? 'rgba(16, 185, 129, 0.25)' : 'rgba(16, 185, 129, 0.2)',
-                      },
-                    ]}
-                  >
-                    <CheckCircle2 size={16} color="#10B981" />
-                    <Text
-                      style={[
-                        styles.verifiedBannerText,
-                        { color: isDark ? '#A7F3D0' : '#065F46' },
-                      ]}
-                    >
-                      Zero deadweight: Candidates have active repo activity within the last 30 days.
-                    </Text>
-                  </View>
-                </View>
-              </View>
-            ) : (
-              /* Scheduler Slot Voting Mockup */
-              <View style={styles.schedulerMockWrap}>
-                <View style={styles.schedulerMockHeader}>
-                  <Calendar size={18} color="#14B8A6" />
-                  <Text
-                    style={[
-                      styles.schedulerMockTitle,
-                      { color: isDark ? '#FFFFFF' : '#0F172A', marginLeft: 8 },
-                    ]}
-                  >
-                    Sprint 1 Architecture & Task Review
-                  </Text>
-                  <View style={styles.votingActivePill}>
-                    <Text style={styles.votingActiveText}>Voting Active</Text>
-                  </View>
-                </View>
-
-                <Text
-                  style={[
-                    styles.schedulerMockDesc,
-                    { color: isDark ? '#94A3B8' : '#64748B' },
-                  ]}
-                >
-                  Cast your vote for the best team sync time slot. Confirms automatically when consensus is reached.
-                </Text>
-
-                {/* Slot 1 */}
-                <View
-                  style={[
-                    styles.slotMockCard,
-                    {
-                      backgroundColor: isDark ? '#1E293B' : '#F8FAFC',
-                      borderColor: '#14B8A6',
-                    },
-                  ]}
-                >
-                  <View style={{ flex: 1 }}>
-                    <Text
-                      style={[
-                        styles.slotTimeText,
-                        { color: isDark ? '#FFFFFF' : '#0F172A' },
-                      ]}
-                    >
-                      Tuesday, 3:00 PM - 4:00 PM
-                    </Text>
-                    <Text style={{ color: '#14B8A6', fontSize: 13, marginTop: 2, fontWeight: '600' }}>
-                      4 of 4 team members available (100% consensus)
-                    </Text>
-                  </View>
-                  <View style={styles.slotConfirmedBadge}>
-                    <Text style={styles.slotConfirmedText}>Winning Slot</Text>
-                  </View>
-                </View>
-
-                {/* Slot 2 */}
-                <View
-                  style={[
-                    styles.slotMockCard,
-                    {
-                      backgroundColor: isDark ? '#1E293B' : '#F8FAFC',
-                      borderColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
-                    },
-                  ]}
-                >
-                  <View style={{ flex: 1 }}>
-                    <Text
-                      style={[
-                        styles.slotTimeText,
-                        { color: isDark ? '#FFFFFF' : '#0F172A' },
-                      ]}
-                    >
-                      Thursday, 11:00 AM - 12:00 PM
-                    </Text>
-                    <Text style={{ color: isDark ? '#94A3B8' : '#64748B', fontSize: 13, marginTop: 2 }}>
-                      2 of 4 team members available
-                    </Text>
-                  </View>
-                </View>
-              </View>
-            )}
-          </View>
+        <View style={styles.exploreMarketplaceRow}>
+          <TouchableOpacity
+            onPress={handleNavigateMarketplace}
+            style={[
+              styles.exploreMarketplaceBtn,
+              {
+                backgroundColor: surfaceBg,
+                borderColor: surfaceBorder,
+              },
+            ]}
+          >
+            <Text style={[styles.exploreMarketplaceText, { color: textPrimaryColor }]}>
+              Explore All Projects in Marketplace
+            </Text>
+            <ArrowRight size={15} color={textPrimaryColor} style={{ marginLeft: 6 }} />
+          </TouchableOpacity>
         </View>
       </View>
 
-      {/* Bento Grid Features Section */}
-      <View style={styles.bentoSection}>
-        <Text style={styles.sectionEyebrow}>ARCHITECTURE & WORKFLOW</Text>
-        <Text
-          style={[
-            styles.sectionTitle,
-            { color: isDark ? '#FFFFFF' : '#0F172A' },
-          ]}
-        >
-          Built to make project collaboration effortless
-        </Text>
-        <Text
-          style={[
-            styles.sectionSubtitle,
-            { color: isDark ? '#94A3B8' : '#64748B' },
-          ]}
-        >
-          Everything from finding compatible developers to running team syncs, designed for campus teams.
-        </Text>
+      {/* Platform Capabilities (Linear Bento Cards) */}
+      <View style={styles.sectionContainer}>
+        <View style={styles.sectionHeader}>
+          <Text style={[styles.sectionEyebrow, { color: '#14B8A6' }]}>
+            PLATFORM CAPABILITIES
+          </Text>
+          <Text style={[styles.sectionTitle, { color: textPrimaryColor }]}>
+            Engineered for campus collaboration
+          </Text>
+          <Text style={[styles.sectionSubtitle, { color: textMutedColor }]}>
+            Precision tools designed to streamline teammate discovery, schedule alignment, and project execution.
+          </Text>
+        </View>
 
         <View style={styles.bentoGrid}>
-          {/* Bento Card 1: Skill Matching */}
+          {/* Card 1 */}
           <View
             style={[
               styles.bentoCard,
               {
-                backgroundColor: isDark ? '#0F172A' : '#FFFFFF',
-                borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.08)',
+                backgroundColor: surfaceBg,
+                borderColor: surfaceBorder,
               },
             ]}
           >
-            <LinearGradient
-              colors={['#6366F1', '#4F46E5']}
-              style={styles.bentoIconBadge}
-            >
-              <Users size={20} color="#FFFFFF" />
-            </LinearGradient>
-            <Text
+            <View
               style={[
-                styles.bentoCardTitle,
-                { color: isDark ? '#FFFFFF' : '#0F172A' },
+                styles.bentoIconBox,
+                {
+                  backgroundColor: isDark ? 'rgba(99, 102, 241, 0.1)' : 'rgba(99, 102, 241, 0.08)',
+                  borderColor: isDark ? 'rgba(99, 102, 241, 0.25)' : 'rgba(99, 102, 241, 0.15)',
+                },
               ]}
             >
+              <Users size={20} color="#6366F1" />
+            </View>
+            <Text style={[styles.bentoTitle, { color: textPrimaryColor }]}>
               Skill-Based Matching
             </Text>
-            <Text
-              style={[
-                styles.bentoCardBody,
-                { color: isDark ? '#94A3B8' : '#64748B' },
-              ]}
-            >
-              Search by specific technologies like React Native, Python, or TypeScript. Find classmates whose verified skill set matches your exact project requirements.
+            <Text style={[styles.bentoBody, { color: textMutedColor }]}>
+              Search for teammates based on verified technical proficiencies, course enrollment, and weekly schedule availability.
             </Text>
-
-            <View style={styles.bentoPillsWrap}>
-              <Text style={styles.bentoMiniPill}>#React Native</Text>
-              <Text style={styles.bentoMiniPill}>#TypeScript</Text>
-              <Text style={styles.bentoMiniPill}>#Node.js</Text>
+            <View style={styles.bentoChipsRow}>
+              <View
+                style={[
+                  styles.bentoChip,
+                  {
+                    backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
+                    borderColor: surfaceBorder,
+                  },
+                ]}
+              >
+                <Text style={[styles.bentoChipText, { color: textPrimaryColor }]}>
+                  Weighted Algorithm
+                </Text>
+              </View>
+              <View
+                style={[
+                  styles.bentoChip,
+                  {
+                    backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
+                    borderColor: surfaceBorder,
+                  },
+                ]}
+              >
+                <Text style={[styles.bentoChipText, { color: textPrimaryColor }]}>
+                  Skill Tag Queries
+                </Text>
+              </View>
             </View>
           </View>
 
-          {/* Bento Card 2: Smart Scheduler */}
+          {/* Card 2 */}
           <View
             style={[
               styles.bentoCard,
               {
-                backgroundColor: isDark ? '#0F172A' : '#FFFFFF',
-                borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.08)',
+                backgroundColor: surfaceBg,
+                borderColor: surfaceBorder,
               },
             ]}
           >
-            <LinearGradient
-              colors={['#14B8A6', '#0D9488']}
-              style={styles.bentoIconBadge}
-            >
-              <Calendar size={20} color="#FFFFFF" />
-            </LinearGradient>
-            <Text
+            <View
               style={[
-                styles.bentoCardTitle,
-                { color: isDark ? '#FFFFFF' : '#0F172A' },
+                styles.bentoIconBox,
+                {
+                  backgroundColor: isDark ? 'rgba(20, 184, 166, 0.1)' : 'rgba(20, 184, 166, 0.08)',
+                  borderColor: isDark ? 'rgba(20, 184, 166, 0.25)' : 'rgba(20, 184, 166, 0.15)',
+                },
               ]}
             >
+              <Calendar size={20} color="#14B8A6" />
+            </View>
+            <Text style={[styles.bentoTitle, { color: textPrimaryColor }]}>
               Smart Meeting Scheduler
             </Text>
-            <Text
-              style={[
-                styles.bentoCardBody,
-                { color: isDark ? '#94A3B8' : '#64748B' },
-              ]}
-            >
-              Propose candidate meeting slots and let your team vote. Once consensus is reached, lock the winning slot into the shared project calendar instantly.
+            <Text style={[styles.bentoBody, { color: textMutedColor }]}>
+              Propose candidate meeting slots and collect consensus votes from members to automatically resolve winning sync times.
             </Text>
-
-            <View style={styles.bentoPillsWrap}>
-              <Text style={styles.bentoMiniPillTeal}>Candidate Slots</Text>
-              <Text style={styles.bentoMiniPillTeal}>Consensus Lock</Text>
+            <View style={styles.bentoChipsRow}>
+              <View
+                style={[
+                  styles.bentoChip,
+                  {
+                    backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
+                    borderColor: surfaceBorder,
+                  },
+                ]}
+              >
+                <Text style={[styles.bentoChipText, { color: textPrimaryColor }]}>
+                  Slot Voting
+                </Text>
+              </View>
+              <View
+                style={[
+                  styles.bentoChip,
+                  {
+                    backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
+                    borderColor: surfaceBorder,
+                  },
+                ]}
+              >
+                <Text style={[styles.bentoChipText, { color: textPrimaryColor }]}>
+                  Consensus Lock
+                </Text>
+              </View>
             </View>
           </View>
 
-          {/* Bento Card 3: GitHub Activity Sync */}
+          {/* Card 3 */}
           <View
             style={[
               styles.bentoCard,
               {
-                backgroundColor: isDark ? '#0F172A' : '#FFFFFF',
-                borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.08)',
+                backgroundColor: surfaceBg,
+                borderColor: surfaceBorder,
               },
             ]}
           >
-            <LinearGradient
-              colors={['#F43F5E', '#E11D48']}
-              style={styles.bentoIconBadge}
-            >
-              <GitBranch size={20} color="#FFFFFF" />
-            </LinearGradient>
-            <Text
+            <View
               style={[
-                styles.bentoCardTitle,
-                { color: isDark ? '#FFFFFF' : '#0F172A' },
+                styles.bentoIconBox,
+                {
+                  backgroundColor: isDark ? 'rgba(244, 63, 94, 0.1)' : 'rgba(244, 63, 94, 0.08)',
+                  borderColor: isDark ? 'rgba(244, 63, 94, 0.25)' : 'rgba(244, 63, 94, 0.15)',
+                },
               ]}
             >
+              <GitBranch size={20} color="#F43F5E" />
+            </View>
+            <Text style={[styles.bentoTitle, { color: textPrimaryColor }]}>
               Verified GitHub Activity
             </Text>
-            <Text
-              style={[
-                styles.bentoCardBody,
-                { color: isDark ? '#94A3B8' : '#64748B' },
-              ]}
-            >
-              Connect your GitHub account via OAuth. Display real commit frequency, public repositories, and top languages so teammates know your coding track record.
+            <Text style={[styles.bentoBody, { color: textMutedColor }]}>
+              Inspect verified commit velocity, public repository history, and primary languages directly synced via GitHub OAuth.
             </Text>
-
-            <View style={styles.bentoPillsWrap}>
-              <Text style={styles.bentoMiniPillCoral}>OAuth 2.0</Text>
-              <Text style={styles.bentoMiniPillCoral}>Verified Repos</Text>
+            <View style={styles.bentoChipsRow}>
+              <View
+                style={[
+                  styles.bentoChip,
+                  {
+                    backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
+                    borderColor: surfaceBorder,
+                  },
+                ]}
+              >
+                <Text style={[styles.bentoChipText, { color: textPrimaryColor }]}>
+                  OAuth Verification
+                </Text>
+              </View>
+              <View
+                style={[
+                  styles.bentoChip,
+                  {
+                    backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
+                    borderColor: surfaceBorder,
+                  },
+                ]}
+              >
+                <Text style={[styles.bentoChipText, { color: textPrimaryColor }]}>
+                  Repository Stats
+                </Text>
+              </View>
             </View>
           </View>
 
-          {/* Bento Card 4: Idea Hub */}
+          {/* Card 4 */}
           <View
             style={[
               styles.bentoCard,
               {
-                backgroundColor: isDark ? '#0F172A' : '#FFFFFF',
-                borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.08)',
+                backgroundColor: surfaceBg,
+                borderColor: surfaceBorder,
               },
             ]}
           >
-            <LinearGradient
-              colors={['#EAB308', '#CA8A04']}
-              style={styles.bentoIconBadge}
-            >
-              <Sparkles size={20} color="#FFFFFF" />
-            </LinearGradient>
-            <Text
+            <View
               style={[
-                styles.bentoCardTitle,
-                { color: isDark ? '#FFFFFF' : '#0F172A' },
+                styles.bentoIconBox,
+                {
+                  backgroundColor: isDark ? 'rgba(234, 179, 8, 0.1)' : 'rgba(234, 179, 8, 0.08)',
+                  borderColor: isDark ? 'rgba(234, 179, 8, 0.25)' : 'rgba(234, 179, 8, 0.15)',
+                },
               ]}
             >
-              Collaborative Idea Hub
+              <Sparkles size={20} color="#EAB308" />
+            </View>
+            <Text style={[styles.bentoTitle, { color: textPrimaryColor }]}>
+              Collaborative Workspace
             </Text>
-            <Text
-              style={[
-                styles.bentoCardBody,
-                { color: isDark ? '#94A3B8' : '#64748B' },
-              ]}
-            >
-              Explore capstone ideas, upvote community submissions, and generate structured project proposals powered by AI to kickstart your next build.
+            <Text style={[styles.bentoBody, { color: textMutedColor }]}>
+              Organize project tasks on sprint Kanban boards, access shared repositories, and complete structured peer reviews.
             </Text>
-
-            <View style={styles.bentoPillsWrap}>
-              <Text style={styles.bentoMiniPillYellow}>AI Blueprints</Text>
-              <Text style={styles.bentoMiniPillYellow}>Upvote Feed</Text>
+            <View style={styles.bentoChipsRow}>
+              <View
+                style={[
+                  styles.bentoChip,
+                  {
+                    backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
+                    borderColor: surfaceBorder,
+                  },
+                ]}
+              >
+                <Text style={[styles.bentoChipText, { color: textPrimaryColor }]}>
+                  Kanban Sprints
+                </Text>
+              </View>
+              <View
+                style={[
+                  styles.bentoChip,
+                  {
+                    backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
+                    borderColor: surfaceBorder,
+                  },
+                ]}
+              >
+                <Text style={[styles.bentoChipText, { color: textPrimaryColor }]}>
+                  Peer Evaluations
+                </Text>
+              </View>
             </View>
           </View>
         </View>
       </View>
 
       {/* 3-Step Workflow */}
-      <View style={styles.workflowSection}>
-        <Text style={styles.sectionEyebrow}>HOW IT WORKS</Text>
-        <Text
-          style={[
-            styles.sectionTitle,
-            { color: isDark ? '#FFFFFF' : '#0F172A' },
-          ]}
-        >
-          Three steps to your dream team
-        </Text>
+      <View style={styles.sectionContainer}>
+        <View style={styles.sectionHeader}>
+          <Text style={[styles.sectionEyebrow, { color: '#F43F5E' }]}>
+            HOW IT WORKS
+          </Text>
+          <Text style={[styles.sectionTitle, { color: textPrimaryColor }]}>
+            Three steps to your team
+          </Text>
+          <Text style={[styles.sectionSubtitle, { color: textMutedColor }]}>
+            From account registration to active sprint collaboration in three simple phases.
+          </Text>
+        </View>
 
-        <View style={styles.stepsGrid}>
+        <View style={styles.workflowGrid}>
           {/* Step 1 */}
           <View
             style={[
-              styles.stepCard,
+              styles.workflowCard,
               {
-                backgroundColor: isDark ? '#0F172A' : '#FFFFFF',
-                borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.08)',
+                backgroundColor: surfaceBg,
+                borderColor: surfaceBorder,
               },
             ]}
           >
-            <View style={styles.stepNumCirclePrimary}>
-              <Text style={styles.stepNumText}>1</Text>
-            </View>
-            <Text
+            <View
               style={[
-                styles.stepCardTitle,
-                { color: isDark ? '#FFFFFF' : '#0F172A' },
+                styles.stepNumberBadge,
+                {
+                  backgroundColor: isDark ? '#27272A' : '#F4F4F5',
+                  borderColor: surfaceBorder,
+                },
               ]}
             >
+              <Text style={[styles.stepNumberText, { color: textPrimaryColor }]}>
+                1
+              </Text>
+            </View>
+            <Text style={[styles.workflowCardTitle, { color: textPrimaryColor }]}>
               Create Your Profile
             </Text>
-            <Text
-              style={[
-                styles.stepCardBody,
-                { color: isDark ? '#94A3B8' : '#64748B' },
-              ]}
-            >
-              List your department, semester, and skills. Connect your GitHub account with a single click.
+            <Text style={[styles.workflowCardBody, { color: textMutedColor }]}>
+              Specify your department, semester, and key technical skills. Connect your GitHub account with a single click.
             </Text>
           </View>
 
           {/* Step 2 */}
           <View
             style={[
-              styles.stepCard,
+              styles.workflowCard,
               {
-                backgroundColor: isDark ? '#0F172A' : '#FFFFFF',
-                borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.08)',
+                backgroundColor: surfaceBg,
+                borderColor: surfaceBorder,
               },
             ]}
           >
-            <View style={styles.stepNumCircleSecondary}>
-              <Text style={styles.stepNumText}>2</Text>
-            </View>
-            <Text
+            <View
               style={[
-                styles.stepCardTitle,
-                { color: isDark ? '#FFFFFF' : '#0F172A' },
+                styles.stepNumberBadge,
+                {
+                  backgroundColor: isDark ? '#27272A' : '#F4F4F5',
+                  borderColor: surfaceBorder,
+                },
               ]}
             >
+              <Text style={[styles.stepNumberText, { color: textPrimaryColor }]}>
+                2
+              </Text>
+            </View>
+            <Text style={[styles.workflowCardTitle, { color: textPrimaryColor }]}>
               Match & Invite
             </Text>
-            <Text
-              style={[
-                styles.stepCardBody,
-                { color: isDark ? '#94A3B8' : '#64748B' },
-              ]}
-            >
-              Search by skill name, review compatibility percentages, and send invitations directly to candidates.
+            <Text style={[styles.workflowCardBody, { color: textMutedColor }]}>
+              Search candidates by skill requirements, review compatibility metrics, and send invitations directly to peers.
             </Text>
           </View>
 
           {/* Step 3 */}
           <View
             style={[
-              styles.stepCard,
+              styles.workflowCard,
               {
-                backgroundColor: isDark ? '#0F172A' : '#FFFFFF',
-                borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.08)',
+                backgroundColor: surfaceBg,
+                borderColor: surfaceBorder,
               },
             ]}
           >
-            <View style={styles.stepNumCircleTertiary}>
-              <Text style={styles.stepNumText}>3</Text>
-            </View>
-            <Text
+            <View
               style={[
-                styles.stepCardTitle,
-                { color: isDark ? '#FFFFFF' : '#0F172A' },
+                styles.stepNumberBadge,
+                {
+                  backgroundColor: isDark ? '#27272A' : '#F4F4F5',
+                  borderColor: surfaceBorder,
+                },
               ]}
             >
+              <Text style={[styles.stepNumberText, { color: textPrimaryColor }]}>
+                3
+              </Text>
+            </View>
+            <Text style={[styles.workflowCardTitle, { color: textPrimaryColor }]}>
               Schedule & Ship
             </Text>
-            <Text
-              style={[
-                styles.stepCardBody,
-                { color: isDark ? '#94A3B8' : '#64748B' },
-              ]}
-            >
-              Propose meeting times, track project deadlines on the team calendar, and deliver your project together.
+            <Text style={[styles.workflowCardBody, { color: textMutedColor }]}>
+              Vote on team meeting slots, track milestones on the project board, and submit confidential peer evaluations.
             </Text>
           </View>
         </View>
       </View>
 
-      {/* Student Testimonials */}
-      <View style={styles.testimonialSection}>
-        <Text style={styles.sectionEyebrow}>STUDENT VOICES</Text>
-        <Text
-          style={[
-            styles.sectionTitle,
-            { color: isDark ? '#FFFFFF' : '#0F172A' },
-          ]}
-        >
-          Built by students, trusted by developers
-        </Text>
-
-        <View style={styles.testimonialGrid}>
-          <View
-            style={[
-              styles.testimonialCard,
-              {
-                backgroundColor: isDark ? '#0F172A' : '#FFFFFF',
-                borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.08)',
-              },
-            ]}
-          >
-            <View style={styles.starsRow}>
-              {[1, 2, 3, 4, 5].map((s) => (
-                <Star key={s} size={14} color="#F59E0B" fill="#F59E0B" style={{ marginRight: 3 }} />
-              ))}
-            </View>
-            <Text
-              style={[
-                styles.testimonialQuoteText,
-                { color: isDark ? '#CBD5E1' : '#334155' },
-              ]}
-            >
-              "TeamUp helped us assemble our capstone team in two days. The GitHub stats and skill matching made it obvious who had real experience."
-            </Text>
-            <View style={styles.testimonialAuthorRow}>
-              <View style={[styles.authorAvatar, { backgroundColor: '#6366F1' }]}>
-                <Text style={styles.authorAvatarText}>CS</Text>
-              </View>
-              <View style={{ marginLeft: 10 }}>
-                <Text
-                  style={[
-                    styles.authorNameText,
-                    { color: isDark ? '#FFFFFF' : '#0F172A' },
-                  ]}
-                >
-                  Computer Science Senior
-                </Text>
-                <Text style={{ color: isDark ? '#94A3B8' : '#64748B', fontSize: 12 }}>
-                  AI Study Buddy Lead
-                </Text>
-              </View>
-            </View>
-          </View>
-
-          <View
-            style={[
-              styles.testimonialCard,
-              {
-                backgroundColor: isDark ? '#0F172A' : '#FFFFFF',
-                borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.08)',
-              },
-            ]}
-          >
-            <View style={styles.starsRow}>
-              {[1, 2, 3, 4, 5].map((s) => (
-                <Star key={s} size={14} color="#F59E0B" fill="#F59E0B" style={{ marginRight: 3 }} />
-              ))}
-            </View>
-            <Text
-              style={[
-                styles.testimonialQuoteText,
-                { color: isDark ? '#CBD5E1' : '#334155' },
-              ]}
-            >
-              "Scheduling syncs used to take 20 messages back and forth. With TeamUp slot voting, we confirm meeting times in minutes."
-            </Text>
-            <View style={styles.testimonialAuthorRow}>
-              <View style={[styles.authorAvatar, { backgroundColor: '#14B8A6' }]}>
-                <Text style={styles.authorAvatarText}>SE</Text>
-              </View>
-              <View style={{ marginLeft: 10 }}>
-                <Text
-                  style={[
-                    styles.authorNameText,
-                    { color: isDark ? '#FFFFFF' : '#0F172A' },
-                  ]}
-                >
-                  Software Engineering Junior
-                </Text>
-                <Text style={{ color: isDark ? '#94A3B8' : '#64748B', fontSize: 12 }}>
-                  Hackathon Finalist Team
-                </Text>
-              </View>
-            </View>
-          </View>
-        </View>
-      </View>
-
-      {/* High-Conversion Bottom CTA Banner */}
+      {/* Bottom CTA Banner */}
       <View style={styles.bottomCtaSection}>
-        <LinearGradient
-          colors={isDark ? ['#1E1B4B', '#0F172A'] : ['#EEF2FF', '#FFFFFF']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
+        <View
           style={[
             styles.bottomCtaCard,
             {
-              borderColor: isDark ? 'rgba(99, 102, 241, 0.3)' : 'rgba(99, 102, 241, 0.2)',
+              backgroundColor: surfaceBg,
+              borderColor: surfaceBorder,
             },
           ]}
         >
-          <Text
-            style={[
-              styles.bottomCtaTitle,
-              { color: isDark ? '#FFFFFF' : '#0F172A' },
-            ]}
-          >
-            Ready to build your next project?
+          <Text style={[styles.bottomCtaTitle, { color: textPrimaryColor }]}>
+            Ready to start your next semester project?
           </Text>
-          <Text
-            style={[
-              styles.bottomCtaSubtitle,
-              { color: isDark ? '#94A3B8' : '#475569' },
-            ]}
-          >
-            Create your profile in 60 seconds and connect with teammates across campus today.
+          <Text style={[styles.bottomCtaSubtitle, { color: textMutedColor }]}>
+            Join student creators, engineers, and researchers across campus. Assemble your team and build together.
           </Text>
 
           <View style={styles.bottomCtaBtnsRow}>
             <TouchableOpacity
               onPress={handleNavigateRegister}
+              style={[
+                styles.bottomPrimaryBtn,
+                {
+                  backgroundColor: isDark ? '#FAFAFA' : '#09090B',
+                },
+              ]}
               activeOpacity={0.88}
             >
-              <LinearGradient
-                colors={['#6366F1', '#4F46E5']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.bottomJoinBtn}
+              <Text
+                style={[
+                  styles.bottomPrimaryBtnText,
+                  { color: isDark ? '#09090B' : '#FAFAFA' },
+                ]}
               >
-                <Text style={styles.bottomJoinBtnText}>Join TeamUp</Text>
-                <ArrowRight size={16} color="#FFFFFF" style={{ marginLeft: 6 }} />
-              </LinearGradient>
+                Join TeamUp
+              </Text>
+              <ArrowRight
+                size={16}
+                color={isDark ? '#09090B' : '#FAFAFA'}
+                style={{ marginLeft: 6 }}
+              />
             </TouchableOpacity>
 
             <TouchableOpacity
               onPress={handleNavigateLogin}
               style={[
-                styles.bottomLoginBtn,
+                styles.bottomSecondaryBtn,
                 {
-                  backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : '#FFFFFF',
-                  borderColor: isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.1)',
+                  borderColor: surfaceBorder,
+                  backgroundColor: isDark ? 'rgba(255, 255, 255, 0.04)' : 'transparent',
                 },
               ]}
             >
               <Text
                 style={[
-                  styles.bottomLoginBtnText,
-                  { color: isDark ? '#F1F5F9' : '#1E293B' },
+                  styles.bottomSecondaryBtnText,
+                  { color: textPrimaryColor },
                 ]}
               >
                 Log In
               </Text>
             </TouchableOpacity>
           </View>
-        </LinearGradient>
+        </View>
       </View>
 
       {/* Footer */}
@@ -1253,17 +1015,12 @@ export const LandingScreen: React.FC<LandingScreenProps> = ({ navigation }) => {
         style={[
           styles.footer,
           {
-            borderTopColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.06)',
+            borderTopColor: surfaceBorder,
           },
         ]}
       >
-        <Text
-          style={[
-            styles.footerText,
-            { color: isDark ? '#64748B' : '#94A3B8' },
-          ]}
-        >
-          TeamUp &bull; University Collaboration & Project Matching Platform
+        <Text style={[styles.footerText, { color: textMutedColor }]}>
+          TeamUp Campus Collaboration Platform
         </Text>
       </View>
     </ScrollView>
@@ -1278,37 +1035,37 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 60,
   },
-  ambientGlowContainer: {
+  ambientGlowWrapper: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
-    height: 700,
+    height: 600,
     overflow: 'hidden',
   },
-  glowOrbPrimary: {
+  ambientGlowOrbPrimary: {
     position: 'absolute',
-    top: -150,
-    left: '20%',
-    width: 500,
-    height: 500,
-    borderRadius: 250,
+    top: -120,
+    left: '25%',
+    width: 480,
+    height: 480,
+    borderRadius: 240,
   },
-  glowOrbSecondary: {
+  ambientGlowOrbSecondary: {
     position: 'absolute',
-    top: 50,
-    right: '10%',
-    width: 450,
-    height: 450,
-    borderRadius: 225,
+    top: 60,
+    right: '15%',
+    width: 400,
+    height: 400,
+    borderRadius: 200,
   },
   navbar: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingVertical: 12,
-    paddingHorizontal: 18,
-    borderRadius: 16,
+    paddingHorizontal: 16,
+    borderRadius: 14,
     marginTop: 14,
     borderWidth: 1,
     maxWidth: 1100,
@@ -1321,15 +1078,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   logoBadge: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
+    width: 34,
+    height: 34,
+    borderRadius: 8,
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 1,
+  },
+  brandTextGroup: {
+    marginLeft: 10,
   },
   brandTitle: {
-    fontWeight: '800',
-    fontSize: 17,
+    fontWeight: '700',
+    fontSize: 16,
     letterSpacing: -0.3,
   },
   brandSubtitle: {
@@ -1341,726 +1102,446 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
   },
-  themeToggleBtn: {
+  navMarketplaceBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 10,
-    paddingVertical: 7,
-    borderRadius: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
     borderWidth: 1,
+    gap: 6,
   },
-  themeToggleText: {
+  navMarketplaceText: {
     fontSize: 12,
     fontWeight: '600',
   },
+  themeToggleBtn: {
+    paddingHorizontal: 9,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   navLoginBtn: {
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
     borderWidth: 1,
   },
   navLoginText: {
     fontSize: 13,
     fontWeight: '600',
   },
-  navJoinGradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  navJoinBtn: {
     paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 10,
+    paddingVertical: 7,
+    borderRadius: 8,
   },
   navJoinText: {
-    color: '#FFFFFF',
     fontSize: 13,
-    fontWeight: '700',
+    fontWeight: '600',
   },
   heroSection: {
     alignItems: 'center',
-    paddingTop: 50,
-    paddingBottom: 20,
-    maxWidth: 860,
+    paddingTop: 54,
+    paddingBottom: 24,
+    maxWidth: 820,
     width: '100%',
     alignSelf: 'center',
   },
-  heroPillContainer: {
+  heroPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 16,
     borderWidth: 1,
     marginBottom: 20,
   },
-  livePulseDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+  pulseDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
     backgroundColor: '#10B981',
     marginRight: 8,
   },
   heroPillText: {
     fontSize: 12,
-    fontWeight: '700',
-    letterSpacing: 0.2,
+    fontWeight: '600',
   },
   heroHeadline: {
-    fontWeight: '900',
-    fontSize: 44,
-    lineHeight: 52,
+    fontWeight: '800',
+    fontSize: Platform.OS === 'web' ? 44 : 32,
+    lineHeight: Platform.OS === 'web' ? 52 : 40,
     textAlign: 'center',
-    letterSpacing: -1,
-  },
-  gradientHeadlineHighlight: {
-    color: '#6366F1',
+    letterSpacing: -0.8,
   },
   heroSubtitle: {
-    fontSize: 17,
-    lineHeight: 28,
+    fontSize: 16,
+    lineHeight: 26,
     textAlign: 'center',
     marginTop: 16,
-    maxWidth: 680,
+    maxWidth: 640,
   },
-  heroCtaRow: {
+  heroActionsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 14,
+    gap: 12,
     marginTop: 28,
   },
-  heroPrimaryBtn: {
+  primaryActionBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 24,
-    paddingVertical: 14,
-    borderRadius: 12,
-    minWidth: 160,
-    justifyContent: 'center',
-  },
-  heroPrimaryBtnText: {
-    color: '#FFFFFF',
-    fontWeight: '700',
-    fontSize: 15,
-  },
-  heroSecondaryBtn: {
     paddingHorizontal: 22,
-    paddingVertical: 14,
-    borderRadius: 12,
-    borderWidth: 1,
-    minWidth: 120,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  heroSecondaryBtnText: {
-    fontWeight: '600',
-    fontSize: 15,
-  },
-  highlightRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'center',
-    gap: 10,
-    marginTop: 28,
-  },
-  highlightTag: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    borderWidth: 1,
-  },
-  highlightTagText: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  statsBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-around',
-    paddingVertical: 20,
-    paddingHorizontal: 16,
-    borderRadius: 16,
-    borderWidth: 1,
-    maxWidth: 1000,
-    width: '100%',
-    alignSelf: 'center',
-    marginTop: 36,
-  },
-  statCol: {
-    alignItems: 'center',
-    flex: 1,
-  },
-  statValue: {
-    fontSize: 26,
-    fontWeight: '900',
-    letterSpacing: -0.5,
-  },
-  statLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    marginTop: 3,
-    textAlign: 'center',
-  },
-  statDivider: {
-    width: 1,
-    height: 36,
-  },
-  windowSection: {
-    maxWidth: 1050,
-    width: '100%',
-    alignSelf: 'center',
-    marginTop: 48,
-  },
-  macWindow: {
-    borderRadius: 16,
-    borderWidth: 1,
-    overflow: 'hidden',
-  },
-  macWindowHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
     paddingVertical: 12,
-    borderBottomWidth: 1,
+    borderRadius: 10,
+    justifyContent: 'center',
   },
-  macDotsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 7,
-  },
-  macDot: {
-    width: 11,
-    height: 11,
-    borderRadius: 6,
-  },
-  macAddressPill: {
-    paddingHorizontal: 16,
-    paddingVertical: 5,
-    borderRadius: 8,
-  },
-  macAddressText: {
-    fontSize: 11,
-    fontWeight: '500',
-    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
-  },
-  macTabsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  macTab: {
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: 'transparent',
-  },
-  macTabText: {
-    fontSize: 12,
+  primaryActionText: {
     fontWeight: '600',
-  },
-  macWindowBody: {
-    padding: 20,
-  },
-  previewSplitView: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 20,
-  },
-  previewCandidateCol: {
-    flex: 1.3,
-    minWidth: 320,
-    padding: 20,
-    borderRadius: 14,
-    borderWidth: 1,
-  },
-  candidateHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  candidateAvatarWrap: {
-    position: 'relative',
-  },
-  candidateAvatarGradient: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  candidateAvatarInitials: {
-    color: '#FFFFFF',
-    fontWeight: '800',
-    fontSize: 18,
-  },
-  onlineStatusBadge: {
-    position: 'absolute',
-    bottom: 0,
-    right: 0,
-    width: 13,
-    height: 13,
-    borderRadius: 7,
-    backgroundColor: '#10B981',
-    borderWidth: 2,
-    borderColor: '#FFFFFF',
-  },
-  candidateNameRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  candidateNameText: {
-    fontWeight: '800',
-    fontSize: 17,
-  },
-  verifiedBadge: {
-    justifyContent: 'center',
-  },
-  candidateMetaText: {
-    fontSize: 12,
-    marginTop: 2,
-  },
-  matchScoreBadgeWrap: {
-    alignItems: 'center',
-    backgroundColor: 'rgba(99, 102, 241, 0.15)',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(99, 102, 241, 0.3)',
-  },
-  matchScoreNumber: {
-    fontSize: 16,
-    fontWeight: '900',
-    color: '#6366F1',
-  },
-  matchScoreLabel: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#6366F1',
-    textTransform: 'uppercase',
-  },
-  candidateBioText: {
     fontSize: 14,
-    lineHeight: 22,
-    marginTop: 14,
   },
-  candidateSkillsRow: {
+  secondaryActionBtn: {
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  secondaryActionText: {
+    fontWeight: '600',
+    fontSize: 14,
+  },
+  heroFeatureTagsRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
+    justifyContent: 'center',
     gap: 8,
-    marginTop: 14,
+    marginTop: 32,
   },
-  skillItemPillPrimary: {
+  heroFeatureTag: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 8,
-    backgroundColor: 'rgba(99, 102, 241, 0.15)',
-    borderWidth: 1,
-    borderColor: 'rgba(99, 102, 241, 0.3)',
-  },
-  skillItemTextPrimary: {
-    color: '#6366F1',
-    fontWeight: '700',
-    fontSize: 12,
-  },
-  skillLevelDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#6366F1',
-    marginLeft: 6,
-  },
-  skillItemPillSecondary: {
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 8,
-    backgroundColor: 'rgba(20, 184, 166, 0.15)',
-    borderWidth: 1,
-    borderColor: 'rgba(20, 184, 166, 0.3)',
-  },
-  skillItemTextSecondary: {
-    color: '#14B8A6',
-    fontWeight: '700',
-    fontSize: 12,
-  },
-  githubActivityStrip: {
-    marginTop: 16,
-    padding: 12,
-    borderRadius: 10,
-    borderWidth: 1,
-  },
-  githubStatsMeta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  githubUsernameText: {
-    fontWeight: '700',
-    fontSize: 13,
-    marginLeft: 6,
-  },
-  heatDotsGrid: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    marginTop: 10,
-  },
-  heatDot: {
-    width: 14,
-    height: 14,
-    borderRadius: 3,
-  },
-  candidateInviteBtn: {
-    paddingVertical: 12,
-    borderRadius: 10,
-    alignItems: 'center',
-  },
-  candidateInviteBtnText: {
-    color: '#FFFFFF',
-    fontWeight: '700',
-    fontSize: 14,
-  },
-  previewBreakdownCol: {
-    flex: 1,
-    minWidth: 280,
-    padding: 20,
-    borderRadius: 14,
-    borderWidth: 1,
-  },
-  breakdownHeading: {
-    fontWeight: '800',
-    fontSize: 16,
-  },
-  breakdownSubhead: {
-    fontSize: 12,
-    marginTop: 2,
-    marginBottom: 16,
-  },
-  meterItem: {
-    marginBottom: 14,
-  },
-  meterLabelRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 6,
-  },
-  meterLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  meterPct: {
-    fontSize: 12,
-    fontWeight: '800',
-  },
-  meterTrack: {
-    height: 7,
-    borderRadius: 4,
-    overflow: 'hidden',
-  },
-  meterFill: {
-    height: '100%',
-    borderRadius: 4,
-  },
-  verifiedBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 12,
-    borderRadius: 10,
-    borderWidth: 1,
-    marginTop: 16,
-  },
-  verifiedBannerText: {
-    fontSize: 12,
-    fontWeight: '600',
-    lineHeight: 18,
-    marginLeft: 8,
-    flex: 1,
-  },
-  schedulerMockWrap: {
-    padding: 10,
-  },
-  schedulerMockHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  schedulerMockTitle: {
-    fontWeight: '800',
-    fontSize: 16,
-    flex: 1,
-  },
-  votingActivePill: {
-    backgroundColor: 'rgba(20, 184, 166, 0.15)',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(20, 184, 166, 0.3)',
-  },
-  votingActiveText: {
-    color: '#14B8A6',
-    fontWeight: '700',
-    fontSize: 11,
-  },
-  schedulerMockDesc: {
-    fontSize: 13,
-    marginTop: 6,
-    marginBottom: 16,
-  },
-  slotMockCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 16,
-    borderRadius: 12,
-    borderWidth: 1,
-    marginBottom: 12,
-  },
-  slotTimeText: {
-    fontWeight: '700',
-    fontSize: 15,
-  },
-  slotConfirmedBadge: {
-    backgroundColor: '#14B8A6',
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 8,
+    borderRadius: 16,
+    borderWidth: 1,
   },
-  slotConfirmedText: {
-    color: '#FFFFFF',
-    fontWeight: '700',
+  heroFeatureTagText: {
     fontSize: 12,
+    fontWeight: '500',
   },
-  bentoSection: {
-    maxWidth: 1050,
+  sectionContainer: {
+    maxWidth: 1100,
     width: '100%',
     alignSelf: 'center',
-    marginTop: 60,
+    marginTop: 64,
+  },
+  sectionHeader: {
+    alignItems: 'center',
+    marginBottom: 32,
   },
   sectionEyebrow: {
-    color: '#6366F1',
-    fontWeight: '800',
-    fontSize: 12,
+    fontSize: 11,
+    fontWeight: '700',
     letterSpacing: 1.2,
-    textTransform: 'uppercase',
+    marginBottom: 6,
   },
   sectionTitle: {
-    fontWeight: '900',
-    fontSize: 32,
-    lineHeight: 40,
-    marginTop: 6,
-    letterSpacing: -0.6,
+    fontWeight: '700',
+    fontSize: 26,
+    letterSpacing: -0.4,
+    textAlign: 'center',
   },
   sectionSubtitle: {
-    fontSize: 15,
-    lineHeight: 24,
+    fontSize: 14,
+    lineHeight: 22,
+    textAlign: 'center',
+    marginTop: 8,
+    maxWidth: 580,
+  },
+  loadingWrap: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 48,
+    gap: 12,
+  },
+  loadingText: {
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  projectsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 16,
+    justifyContent: 'center',
+  },
+  projectCard: {
+    flexBasis: Platform.OS === 'web' ? '48%' : '100%',
+    minWidth: 280,
+    borderRadius: 12,
+    borderWidth: 1,
+    padding: 18,
+  },
+  projectCardTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  projectPillsRow: {
+    flexDirection: 'row',
+    gap: 6,
+    alignItems: 'center',
+  },
+  domainPill: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    borderWidth: 1,
+  },
+  domainPillText: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  semesterPill: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    borderWidth: 1,
+  },
+  semesterPillText: {
+    fontSize: 11,
+    fontWeight: '500',
+  },
+  memberCountBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    borderWidth: 1,
+  },
+  memberCountText: {
+    fontSize: 11,
+    fontWeight: '500',
+  },
+  projectTitleText: {
+    fontSize: 17,
+    fontWeight: '700',
+    letterSpacing: -0.2,
+    marginBottom: 6,
+  },
+  projectDescText: {
+    fontSize: 13,
+    lineHeight: 19,
+    marginBottom: 14,
+  },
+  projectSkillsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginBottom: 14,
+  },
+  skillChip: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    borderWidth: 1,
+  },
+  skillChipText: {
+    fontSize: 11,
+    fontWeight: '500',
+    color: '#6366F1',
+  },
+  projectFooterRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderTopWidth: 1,
+    paddingTop: 12,
+  },
+  creatorInfoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  creatorAvatar: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 7,
+  },
+  creatorAvatarText: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  creatorNameText: {
+    fontSize: 12,
+    fontWeight: '500',
+    maxWidth: 120,
+  },
+  viewProjectRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  viewProjectText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  emptyProjectsCard: {
+    borderRadius: 12,
+    borderWidth: 1,
+    padding: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emptyProjectsTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginTop: 12,
+  },
+  emptyProjectsDesc: {
+    fontSize: 13,
+    textAlign: 'center',
     marginTop: 6,
+    maxWidth: 360,
+  },
+  createProjectBtn: {
+    marginTop: 18,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  createProjectBtnText: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  exploreMarketplaceRow: {
+    alignItems: 'center',
+    marginTop: 20,
+  },
+  exploreMarketplaceBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  exploreMarketplaceText: {
+    fontSize: 13,
+    fontWeight: '600',
   },
   bentoGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 20,
-    marginTop: 24,
+    gap: 16,
+    justifyContent: 'center',
   },
   bentoCard: {
-    flex: 1,
+    flexBasis: Platform.OS === 'web' ? '48%' : '100%',
     minWidth: 280,
-    padding: 24,
-    borderRadius: 16,
-    borderWidth: 1,
-  },
-  bentoIconBadge: {
-    width: 44,
-    height: 44,
     borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  bentoCardTitle: {
-    fontWeight: '800',
-    fontSize: 18,
-  },
-  bentoCardBody: {
-    fontSize: 13,
-    lineHeight: 20,
-    marginTop: 8,
-  },
-  bentoPillsWrap: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 6,
-    marginTop: 16,
-  },
-  bentoMiniPill: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#6366F1',
-    backgroundColor: 'rgba(99, 102, 241, 0.1)',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-  },
-  bentoMiniPillTeal: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#14B8A6',
-    backgroundColor: 'rgba(20, 184, 166, 0.1)',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-  },
-  bentoMiniPillCoral: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#F43F5E',
-    backgroundColor: 'rgba(244, 63, 94, 0.1)',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-  },
-  bentoMiniPillYellow: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#CA8A04',
-    backgroundColor: 'rgba(234, 179, 8, 0.1)',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-  },
-  workflowSection: {
-    maxWidth: 1050,
-    width: '100%',
-    alignSelf: 'center',
-    marginTop: 60,
-  },
-  stepsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 20,
-    marginTop: 24,
-  },
-  stepCard: {
-    flex: 1,
-    minWidth: 260,
-    padding: 24,
-    borderRadius: 16,
     borderWidth: 1,
+    padding: 22,
   },
-  stepNumCirclePrimary: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#6366F1',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 14,
-  },
-  stepNumCircleSecondary: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#14B8A6',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 14,
-  },
-  stepNumCircleTertiary: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#F43F5E',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 14,
-  },
-  stepNumText: {
-    color: '#FFFFFF',
-    fontWeight: '900',
-    fontSize: 16,
-  },
-  stepCardTitle: {
-    fontWeight: '800',
-    fontSize: 17,
-  },
-  stepCardBody: {
-    fontSize: 13,
-    lineHeight: 20,
-    marginTop: 8,
-  },
-  testimonialSection: {
-    maxWidth: 1050,
-    width: '100%',
-    alignSelf: 'center',
-    marginTop: 60,
-  },
-  testimonialGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 20,
-    marginTop: 24,
-  },
-  testimonialCard: {
-    flex: 1,
-    minWidth: 320,
-    padding: 24,
-    borderRadius: 16,
-    borderWidth: 1,
-  },
-  starsRow: {
-    flexDirection: 'row',
-    marginBottom: 14,
-  },
-  testimonialQuoteText: {
-    fontSize: 14,
-    lineHeight: 24,
-    fontStyle: 'italic',
-  },
-  testimonialAuthorRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 18,
-  },
-  authorAvatar: {
+  bentoIconBox: {
     width: 38,
     height: 38,
-    borderRadius: 19,
+    borderRadius: 8,
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 1,
+    marginBottom: 14,
   },
-  authorAvatarText: {
-    color: '#FFFFFF',
-    fontWeight: '800',
-    fontSize: 14,
-  },
-  authorNameText: {
+  bentoTitle: {
+    fontSize: 17,
     fontWeight: '700',
+    letterSpacing: -0.2,
+    marginBottom: 8,
+  },
+  bentoBody: {
+    fontSize: 13,
+    lineHeight: 20,
+    marginBottom: 14,
+  },
+  bentoChipsRow: {
+    flexDirection: 'row',
+    gap: 8,
+    flexWrap: 'wrap',
+  },
+  bentoChip: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    borderWidth: 1,
+  },
+  bentoChipText: {
+    fontSize: 11,
+    fontWeight: '500',
+  },
+  workflowGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 16,
+    justifyContent: 'center',
+  },
+  workflowCard: {
+    flexBasis: Platform.OS === 'web' ? '31%' : '100%',
+    minWidth: 260,
+    borderRadius: 12,
+    borderWidth: 1,
+    padding: 22,
+  },
+  stepNumberBadge: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    marginBottom: 14,
+  },
+  stepNumberText: {
     fontSize: 14,
+    fontWeight: '700',
+  },
+  workflowCardTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    marginBottom: 8,
+  },
+  workflowCardBody: {
+    fontSize: 13,
+    lineHeight: 20,
   },
   bottomCtaSection: {
-    maxWidth: 1050,
+    maxWidth: 900,
     width: '100%',
     alignSelf: 'center',
-    marginTop: 60,
+    marginTop: 64,
   },
   bottomCtaCard: {
-    padding: 40,
-    borderRadius: 24,
+    paddingVertical: 40,
+    paddingHorizontal: 24,
+    borderRadius: 16,
     borderWidth: 1,
     alignItems: 'center',
-    textAlign: 'center',
   },
   bottomCtaTitle: {
-    fontWeight: '900',
-    fontSize: 32,
+    fontWeight: '800',
+    fontSize: Platform.OS === 'web' ? 28 : 22,
     textAlign: 'center',
-    letterSpacing: -0.6,
+    letterSpacing: -0.4,
   },
   bottomCtaSubtitle: {
-    fontSize: 15,
-    lineHeight: 24,
+    fontSize: 14,
+    lineHeight: 22,
     textAlign: 'center',
     marginTop: 10,
     maxWidth: 520,
@@ -2069,38 +1550,37 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    marginTop: 28,
+    marginTop: 24,
   },
-  bottomJoinBtn: {
+  bottomPrimaryBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 24,
-    paddingVertical: 14,
-    borderRadius: 12,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 10,
   },
-  bottomJoinBtnText: {
-    color: '#FFFFFF',
-    fontWeight: '700',
-    fontSize: 15,
+  bottomPrimaryBtnText: {
+    fontWeight: '600',
+    fontSize: 14,
   },
-  bottomLoginBtn: {
-    paddingHorizontal: 22,
-    paddingVertical: 14,
-    borderRadius: 12,
+  bottomSecondaryBtn: {
+    paddingHorizontal: 18,
+    paddingVertical: 12,
+    borderRadius: 10,
     borderWidth: 1,
   },
-  bottomLoginBtnText: {
-    fontWeight: '700',
-    fontSize: 15,
+  bottomSecondaryBtnText: {
+    fontWeight: '600',
+    fontSize: 14,
   },
   footer: {
     borderTopWidth: 1,
     alignItems: 'center',
-    paddingTop: 30,
-    marginTop: 40,
+    paddingTop: 28,
+    marginTop: 48,
   },
   footerText: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '500',
   },
 });

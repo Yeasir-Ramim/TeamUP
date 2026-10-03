@@ -228,7 +228,7 @@ describe('Phase 2 — Team Workspace Shell', () => {
     const buttons = alertSpy.mock.calls[0][2];
     const confirmAction = buttons?.find((b: any) => b.text === 'Kick Member');
     expect(confirmAction).toBeDefined();
-    await confirmAction.onPress();
+    await confirmAction!.onPress!();
 
     await waitFor(() => {
       expect(workspaceService.kickMember).toHaveBeenCalledWith('proj-1', 'm-2');
@@ -291,7 +291,7 @@ describe('Phase 2 — Team Workspace Shell', () => {
     const buttons = alertSpy.mock.calls[0][2];
     const confirmAction = buttons?.find((b: any) => b.text === 'Leave Project');
     expect(confirmAction).toBeDefined();
-    await confirmAction.onPress();
+    await confirmAction!.onPress!();
 
     await waitFor(() => {
       expect(workspaceService.leaveProject).toHaveBeenCalledWith('proj-1', 'm-1');
@@ -335,7 +335,7 @@ describe('Phase 2 — Team Workspace Shell', () => {
     const buttons = alertSpy.mock.calls[0][2];
     const confirmAction = buttons?.find((b: any) => b.text === 'Leave Project');
     expect(confirmAction).toBeDefined();
-    await confirmAction.onPress();
+    await confirmAction!.onPress!();
 
     await waitFor(() => {
       expect(workspaceService.leaveProject).toHaveBeenCalledWith('proj-1');
