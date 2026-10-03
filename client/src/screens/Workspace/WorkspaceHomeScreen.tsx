@@ -6,6 +6,8 @@ import {
   ScrollView,
   RefreshControl,
   TouchableOpacity,
+  Alert,
+  Platform,
 } from 'react-native';
 import { useTheme } from '../../theme/ThemeContext';
 import { AppHeader } from '../../components/AppHeader';
@@ -92,6 +94,39 @@ export const WorkspaceHomeScreen: React.FC<WorkspaceHomeScreenProps> = ({ route,
     if (!taskMetrics.total || taskMetrics.total === 0) return 0;
     return Math.round((taskMetrics.done / taskMetrics.total) * 100);
   }, [taskMetrics]);
+
+  const handleLeaveProject = () => {
+    const confirmLeave = async () => {
+      try {
+        await workspaceService.leaveProject(projectId);
+        if (Platform.OS !== 'web') {
+          Alert.alert('Success', 'You have left the project workspace');
+        }
+        navigation?.navigate('MainApp', { screen: 'Projects' });
+      } catch (err: any) {
+        if (Platform.OS === 'web') {
+          window.alert(err?.message || 'Failed to leave project');
+        } else {
+          Alert.alert('Error', err?.message || 'Failed to leave project');
+        }
+      }
+    };
+
+    if (Platform.OS === 'web') {
+      if (typeof window !== 'undefined' && window.confirm('Are you sure you want to leave this project? You will lose access to the workspace, tasks, and project chat.')) {
+        confirmLeave();
+      }
+    } else {
+      Alert.alert(
+        'Leave Project',
+        'Are you sure you want to leave this project? You will lose access to the workspace, tasks, and project chat.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Leave Project', style: 'destructive', onPress: confirmLeave },
+        ]
+      );
+    }
+  };
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -425,6 +460,49 @@ export const WorkspaceHomeScreen: React.FC<WorkspaceHomeScreenProps> = ({ route,
                 })
               }
             />
+          </Card>
+
+          {/* Project Actions / Danger Zone */}
+          <Card style={{ marginBottom: spacing.md, borderColor: colors.border, borderWidth: 1 }}>
+            <View style={styles.sectionHeader}>
+              <View>
+                <Text style={[typography.h3, { color: !isLeader ? colors.accent : colors.text }]}>
+                  {!isLeader ? 'Project Membership' : 'Team Management'}
+                </Text>
+                <Text style={[typography.bodySmall, { color: colors.textMuted }]}>
+                  {!isLeader
+                    ? 'Leave this workspace and forfeit task assignments'
+                    : 'Manage member roster and applications'}
+                </Text>
+              </View>
+              <Badge
+                label={!isLeader ? 'Member' : 'Leader'}
+                variant={!isLeader ? 'secondary' : 'primary'}
+              />
+            </View>
+
+            <View style={{ marginTop: spacing.md }}>
+              {!isLeader ? (
+                <Button
+                  title="Leave Project"
+                  variant="outline"
+                  onPress={handleLeaveProject}
+                  style={{ borderColor: colors.accent }}
+                />
+              ) : (
+                <Button
+                  title="Manage Members (Kick / Review)"
+                  variant="outline"
+                  onPress={() =>
+                    navigation?.navigate('Members', {
+                      projectId,
+                      projectTitle,
+                      isLeader,
+                    })
+                  }
+                />
+              )}
+            </View>
           </Card>
         </ScrollView>
       </StateWrapper>

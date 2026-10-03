@@ -225,4 +225,31 @@ export class ProjectsController {
   ) {
     return this.projectsService.removeMember(id, memberId, user.userId);
   }
+
+  /**
+   * Leave project (current user)
+   */
+  @Post(':id/leave')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  async leaveProject(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+  ) {
+    return this.projectsService.leaveProject(id, user.userId);
+  }
+
+  /**
+   * Leave project (DELETE alias)
+   */
+  @Delete(':id/leave')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  async leaveProjectDelete(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+  ) {
+    return this.projectsService.leaveProject(id, user.userId);
+  }
 }
+

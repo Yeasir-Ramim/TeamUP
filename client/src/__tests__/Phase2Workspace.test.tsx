@@ -1,5 +1,6 @@
 import React from 'react';
 import { render, fireEvent, waitFor } from '@testing-library/react-native';
+import { Alert } from 'react-native';
 import { ThemeProvider } from '../theme/ThemeContext';
 import { WorkspaceHomeScreen } from '../screens/Workspace/WorkspaceHomeScreen';
 import { MemberListScreen } from '../screens/Workspace/MemberListScreen';
@@ -75,7 +76,7 @@ describe('Phase 2 — Team Workspace Shell', () => {
 
     const route = { params: { projectId: 'proj-1', projectTitle: 'Autonomous Drone Fleet' } };
 
-    const { getByText } = render(
+    const { getByText, getAllByText } = render(
       <ThemeProvider>
         <WorkspaceHomeScreen route={route} navigation={mockNavigation} />
       </ThemeProvider>
@@ -83,7 +84,7 @@ describe('Phase 2 — Team Workspace Shell', () => {
 
     await waitFor(() => {
       expect(getByText('Autonomous Drone Fleet')).toBeTruthy();
-      expect(getByText('Leader')).toBeTruthy();
+      expect(getAllByText('Leader').length).toBeGreaterThan(0);
       expect(getByText('10 Tasks')).toBeTruthy();
       expect(getByText('15 Messages')).toBeTruthy();
       expect(getByText('Latest build is ready for verification')).toBeTruthy();
@@ -181,4 +182,167 @@ describe('Phase 2 — Team Workspace Shell', () => {
       });
     });
   });
+
+  it('MemberListScreen renders Kick Member button for accepted members and kicks when confirmed', async () => {
+    const mockMembers = [
+      { id: 'm-1', userId: 'user-1', role: 'LEADER' as const, status: 'ACCEPTED' as const },
+      {
+        id: 'm-2',
+        userId: 'user-2',
+        role: 'MEMBER' as const,
+        status: 'ACCEPTED' as const,
+        user: {
+          id: 'user-2',
+          email: 'teammate@example.com',
+          profile: { fullName: 'Teammate One' },
+        },
+      },
+    ];
+
+    (workspaceService.getProjectMembers as jest.Mock).mockResolvedValue(mockMembers);
+    (workspaceService.kickMember as jest.Mock).mockResolvedValue({});
+
+    const alertSpy = jest.spyOn(Alert, 'alert');
+
+    const route = { params: { projectId: 'proj-1', isLeader: true } };
+
+    const { getByText } = render(
+      <ThemeProvider>
+        <MemberListScreen route={route} navigation={mockNavigation} />
+      </ThemeProvider>
+    );
+
+    await waitFor(() => {
+      expect(getByText('Kick Member')).toBeTruthy();
+    });
+
+    fireEvent.press(getByText('Kick Member'));
+
+    expect(alertSpy).toHaveBeenCalledWith(
+      'Kick Member',
+      expect.stringContaining('kick Teammate One'),
+      expect.any(Array)
+    );
+
+    // Trigger confirmation action
+    const buttons = alertSpy.mock.calls[0][2];
+    const confirmAction = buttons?.find((b: any) => b.text === 'Kick Member');
+    expect(confirmAction).toBeDefined();
+    await confirmAction.onPress();
+
+    await waitFor(() => {
+      expect(workspaceService.kickMember).toHaveBeenCalledWith('proj-1', 'm-2');
+    });
+
+    alertSpy.mockRestore();
+  });
+
+  it('MemberListScreen renders Leave Project button for accepted member and leaves when confirmed', async () => {
+    const mockMembers = [
+      {
+        id: 'm-1',
+        userId: 'user-1',
+        role: 'MEMBER' as const,
+        status: 'ACCEPTED' as const,
+        user: {
+          id: 'user-1',
+          email: 'leader@example.com',
+          profile: { fullName: 'Current User' },
+        },
+      },
+      {
+        id: 'm-2',
+        userId: 'user-2',
+        role: 'LEADER' as const,
+        status: 'ACCEPTED' as const,
+        user: {
+          id: 'user-2',
+          email: 'other@example.com',
+          profile: { fullName: 'Other Leader' },
+        },
+      },
+    ];
+
+    (workspaceService.getProjectMembers as jest.Mock).mockResolvedValue(mockMembers);
+    (workspaceService.leaveProject as jest.Mock).mockResolvedValue({});
+
+    const alertSpy = jest.spyOn(Alert, 'alert');
+
+    const route = { params: { projectId: 'proj-1', isLeader: false } };
+
+    const { getAllByText } = render(
+      <ThemeProvider>
+        <MemberListScreen route={route} navigation={mockNavigation} />
+      </ThemeProvider>
+    );
+
+    await waitFor(() => {
+      expect(getAllByText('Leave Project').length).toBeGreaterThan(0);
+    });
+
+    fireEvent.press(getAllByText('Leave Project')[0]);
+
+    expect(alertSpy).toHaveBeenCalledWith(
+      'Leave Project',
+      expect.stringContaining('leave this project'),
+      expect.any(Array)
+    );
+
+    const buttons = alertSpy.mock.calls[0][2];
+    const confirmAction = buttons?.find((b: any) => b.text === 'Leave Project');
+    expect(confirmAction).toBeDefined();
+    await confirmAction.onPress();
+
+    await waitFor(() => {
+      expect(workspaceService.leaveProject).toHaveBeenCalledWith('proj-1', 'm-1');
+      expect(mockNavigation.navigate).toHaveBeenCalledWith('MainApp', { screen: 'Projects' });
+    });
+
+    alertSpy.mockRestore();
+  });
+
+  it('WorkspaceHomeScreen renders Leave Project button for regular members and navigates on leave', async () => {
+    const memberOverview = {
+      ...mockOverview,
+      userRole: 'MEMBER' as const,
+    };
+
+    (workspaceService.getWorkspaceOverview as jest.Mock).mockResolvedValue(memberOverview);
+    (workspaceService.leaveProject as jest.Mock).mockResolvedValue({});
+
+    const alertSpy = jest.spyOn(Alert, 'alert');
+
+    const route = { params: { projectId: 'proj-1', projectTitle: 'Autonomous Drone Fleet' } };
+
+    const { getByText } = render(
+      <ThemeProvider>
+        <WorkspaceHomeScreen route={route} navigation={mockNavigation} />
+      </ThemeProvider>
+    );
+
+    await waitFor(() => {
+      expect(getByText('Leave Project')).toBeTruthy();
+    });
+
+    fireEvent.press(getByText('Leave Project'));
+
+    expect(alertSpy).toHaveBeenCalledWith(
+      'Leave Project',
+      expect.stringContaining('leave this project'),
+      expect.any(Array)
+    );
+
+    const buttons = alertSpy.mock.calls[0][2];
+    const confirmAction = buttons?.find((b: any) => b.text === 'Leave Project');
+    expect(confirmAction).toBeDefined();
+    await confirmAction.onPress();
+
+    await waitFor(() => {
+      expect(workspaceService.leaveProject).toHaveBeenCalledWith('proj-1');
+      expect(mockNavigation.navigate).toHaveBeenCalledWith('MainApp', { screen: 'Projects' });
+    });
+
+    alertSpy.mockRestore();
+  });
 });
+

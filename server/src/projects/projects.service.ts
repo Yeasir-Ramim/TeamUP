@@ -1024,4 +1024,23 @@ export class ProjectsService {
 
     return { message: 'Member removed successfully' };
   }
+
+  /**
+   * Leave a project (current user)
+   */
+  async leaveProject(projectId: string, requesterId: string) {
+    const member = await this.prisma.projectMember.findFirst({
+      where: {
+        projectId,
+        userId: requesterId,
+      },
+    });
+
+    if (!member) {
+      throw new NotFoundException('Member record not found in this project');
+    }
+
+    return this.removeMember(projectId, member.id, requesterId);
+  }
 }
+
