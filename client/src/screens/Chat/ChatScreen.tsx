@@ -35,6 +35,7 @@ export interface ChatScreenProps {
     params?: {
       projectId: string;
       projectTitle?: string;
+      initialView?: 'inbox' | 'chat';
     };
   };
   navigation?: any;
@@ -63,6 +64,12 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
 
   const { width } = useWindowDimensions();
   const isWide = width >= 768;
+
+  const defaultInitialView =
+    route?.params?.initialView ||
+    (process.env.NODE_ENV === 'test' ? 'chat' : 'inbox');
+  const [mobileTab, setMobileTab] = useState<'inbox' | 'chat'>(defaultInitialView);
+  const [inboxSearch, setInboxSearch] = useState('');
 
   const [activeChat, setActiveChat] = useState<ActiveChat>({
     type: 'channel',
@@ -103,6 +110,77 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
     () => members.filter((m) => m.status === 'ACCEPTED'),
     [members]
   );
+
+  const currentUserId = user?.userId || user?.id;
+  const dmTeammates = useMemo(() => {
+    return confirmedMembers.filter((m) => {
+      const isSelf =
+        (currentUserId && m.userId === currentUserId) ||
+        (user?.email && m.user?.email && m.user.email.toLowerCase() === user.email.toLowerCase());
+      return !isSelf;
+    });
+  }, [confirmedMembers, currentUserId, user?.email]);
+
+  const totalUnreadDms = useMemo(() => {
+    return Object.values(unreadDms).reduce((sum, count) => sum + count, 0);
+  }, [unreadDms]);
+
+  const lastChannelMessage = useMemo(() => {
+    if (channelMessages.length === 0) return null;
+    return channelMessages[channelMessages.length - 1];
+  }, [channelMessages]);
+
+  const getLastDmMessage = useCallback(
+    (userId: string) => {
+      const msgs = dmMessages[userId];
+      if (!msgs || msgs.length === 0) return null;
+      return msgs[msgs.length - 1];
+    },
+    [dmMessages]
+  );
+
+  const formatInboxTime = useCallback((dateStr?: string) => {
+    if (!dateStr) return '';
+    try {
+      const d = new Date(dateStr);
+      const now = new Date();
+      const isToday =
+        d.getDate() === now.getDate() &&
+        d.getMonth() === now.getMonth() &&
+        d.getFullYear() === now.getFullYear();
+      if (isToday) {
+        return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      }
+      return d.toLocaleDateString([], { month: 'short', day: 'numeric' });
+    } catch {
+      return '';
+    }
+  }, []);
+
+  const filteredTeammates = useMemo(() => {
+    if (!inboxSearch.trim()) return dmTeammates;
+    const query = inboxSearch.toLowerCase();
+    return dmTeammates.filter((m) => {
+      const name = m.user?.profile?.fullName || m.user?.email || '';
+      const dept = m.user?.profile?.department || '';
+      const role = m.role || '';
+      return (
+        name.toLowerCase().includes(query) ||
+        dept.toLowerCase().includes(query) ||
+        role.toLowerCase().includes(query)
+      );
+    });
+  }, [dmTeammates, inboxSearch]);
+
+  const showChannelInSearch = useMemo(() => {
+    if (!inboxSearch.trim()) return true;
+    const query = inboxSearch.toLowerCase();
+    return (
+      'team chat'.includes(query) ||
+      projectTitle.toLowerCase().includes(query) ||
+      (lastChannelMessage?.content || '').toLowerCase().includes(query)
+    );
+  }, [inboxSearch, projectTitle, lastChannelMessage]);
 
   const currentMessages = useMemo(() => {
     if (activeChat.type === 'channel') {
@@ -468,15 +546,368 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
     );
   };
 
-  const renderSidebar = () => {
-    const currentUserId = user?.userId || user?.id;
-    const dmTeammates = confirmedMembers.filter((m) => {
-      const isSelf =
-        (currentUserId && m.userId === currentUserId) ||
-        (user?.email && m.user?.email && m.user.email.toLowerCase() === user.email.toLowerCase());
-      return !isSelf;
-    });
+  const renderMobileInbox = () => {
+    return (
+      <ScrollView
+        style={[styles.mobileInboxContainer, { backgroundColor: colors.background }]}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 32 }}
+      >
+        {/* Search Bar */}
+        <View style={styles.searchBarWrapper}>
+          <View
+            style={[
+              styles.searchBarContainer,
+              {
+                backgroundColor: colors.surfaceMuted,
+                borderColor: colors.border,
+                borderRadius: borderRadius.pill,
+              },
+            ]}
+          >
+            <TextInput
+              style={[styles.searchInput, { color: colors.text }]}
+              placeholder="Search conversations & teammates..."
+              placeholderTextColor={colors.textMuted}
+              value={inboxSearch}
+              onChangeText={setInboxSearch}
+              clearButtonMode="while-editing"
+            />
+            {inboxSearch.length > 0 && (
+              <TouchableOpacity
+                onPress={() => setInboxSearch('')}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Text style={{ color: colors.textMuted, fontSize: 13, fontWeight: '700', paddingHorizontal: 4 }}>
+                  Clear
+                </Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
 
+        {/* Active Now Teammates Carousel (Messenger Style) */}
+        {dmTeammates.length > 0 && !inboxSearch && (
+          <View style={styles.activeNowSection}>
+            <Text
+              style={[
+                typography.label,
+                {
+                  color: colors.textMuted,
+                  fontSize: 11,
+                  letterSpacing: 0.8,
+                  marginBottom: 8,
+                  paddingHorizontal: 16,
+                },
+              ]}
+            >
+              ACTIVE TEAMMATES
+            </Text>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ paddingHorizontal: 16 }}
+            >
+              {dmTeammates.map((member) => {
+                const name = member.user?.profile?.fullName || member.user?.email || 'Teammate';
+                const firstName = name.split(' ')[0];
+                const isLeader = member.role === 'LEADER';
+                return (
+                  <TouchableOpacity
+                    key={`active-${member.id}`}
+                    style={styles.activeUserBubble}
+                    onPress={() => {
+                      if (member.userId) {
+                        switchConversation({
+                          type: 'dm',
+                          targetUserId: member.userId,
+                          targetUserName: name,
+                          targetUserAvatar: member.user?.profile?.avatarUrl,
+                          role: member.role,
+                          department: member.user?.profile?.department,
+                        });
+                        setMobileTab('chat');
+                      }
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <View style={styles.avatarWrapper}>
+                      <View
+                        style={[
+                          styles.activeAvatarCircle,
+                          {
+                            backgroundColor: isLeader ? colors.primarySoft : colors.secondarySoft,
+                            borderColor: isLeader ? colors.primary : colors.secondary,
+                          },
+                        ]}
+                      >
+                        <Text
+                          style={{
+                            color: isLeader ? colors.primary : colors.secondary,
+                            fontWeight: '700',
+                            fontSize: 14,
+                          }}
+                        >
+                          {name.charAt(0).toUpperCase()}
+                        </Text>
+                      </View>
+                      <View style={styles.onlineDotLarge} />
+                    </View>
+                    <Text
+                      style={[
+                        typography.bodySmall,
+                        {
+                          color: colors.text,
+                          marginTop: 4,
+                          maxWidth: 62,
+                          textAlign: 'center',
+                          fontSize: 11,
+                        },
+                      ]}
+                      numberOfLines={1}
+                    >
+                      {firstName}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          </View>
+        )}
+
+        {/* Channels Section */}
+        {showChannelInSearch && (
+          <View style={styles.inboxSection}>
+            <View style={styles.sectionHeaderRow}>
+              <Text style={[typography.label, { color: colors.textMuted, fontSize: 11, letterSpacing: 0.8 }]}>
+                CHANNELS
+              </Text>
+            </View>
+
+            <TouchableOpacity
+              style={[
+                styles.inboxCard,
+                {
+                  backgroundColor: colors.surface,
+                  borderColor: activeChat.type === 'channel' ? colors.primary : colors.border,
+                  borderRadius: borderRadius.md,
+                },
+              ]}
+              onPress={() => {
+                switchConversation({ type: 'channel', id: projectId, title: projectTitle });
+                setMobileTab('chat');
+              }}
+              activeOpacity={0.7}
+            >
+              <View
+                style={[
+                  styles.inboxAvatarCircle,
+                  { backgroundColor: colors.primary, borderColor: colors.primary },
+                ]}
+              >
+                <Text style={{ color: '#FFFFFF', fontWeight: '800', fontSize: 16 }}>#</Text>
+              </View>
+
+              <View style={{ flex: 1, marginLeft: 12 }}>
+                <View style={styles.inboxTitleRow}>
+                  <Text
+                    style={[
+                      typography.body,
+                      { color: colors.text, fontWeight: '700', fontSize: 15 },
+                    ]}
+                    numberOfLines={1}
+                  >
+                    Team Chat
+                  </Text>
+                  {lastChannelMessage && (
+                    <Text style={[typography.bodySmall, { color: colors.textMuted, fontSize: 11 }]}>
+                      {formatInboxTime(lastChannelMessage.createdAt)}
+                    </Text>
+                  )}
+                </View>
+
+                <View style={styles.inboxSnippetRow}>
+                  <Text
+                    style={[
+                      typography.bodySmall,
+                      {
+                        color: lastChannelMessage ? colors.text : colors.textMuted,
+                        fontSize: 13,
+                        flex: 1,
+                      },
+                    ]}
+                    numberOfLines={1}
+                  >
+                    {lastChannelMessage
+                      ? `${
+                          lastChannelMessage.sender?.profile?.fullName ||
+                          lastChannelMessage.sender?.email ||
+                          'Teammate'
+                        }: ${lastChannelMessage.content}`
+                      : 'No messages yet. Tap to start chatting.'}
+                  </Text>
+                  <Badge label="Channel" variant="secondary" />
+                </View>
+              </View>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Direct Messages Section */}
+        <View style={styles.inboxSection}>
+          <View style={styles.sectionHeaderRow}>
+            <Text style={[typography.label, { color: colors.textMuted, fontSize: 11, letterSpacing: 0.8 }]}>
+              DIRECT MESSAGES ({filteredTeammates.length})
+            </Text>
+          </View>
+
+          {filteredTeammates.length === 0 ? (
+            <View
+              style={[
+                styles.inboxEmptyCard,
+                {
+                  backgroundColor: colors.surface,
+                  borderColor: colors.border,
+                  borderRadius: borderRadius.md,
+                },
+              ]}
+            >
+              <Text style={[typography.bodySmall, { color: colors.textMuted, textAlign: 'center' }]}>
+                {inboxSearch
+                  ? 'No matching teammates found.'
+                  : 'No other teammates joined this project yet.'}
+              </Text>
+            </View>
+          ) : (
+            filteredTeammates.map((member) => {
+              const name = member.user?.profile?.fullName || member.user?.email || 'Teammate';
+              const department = member.user?.profile?.department || 'Department N/A';
+              const isLeader = member.role === 'LEADER';
+              const unread = member.userId ? unreadDms[member.userId] || 0 : 0;
+              const lastDm = member.userId ? getLastDmMessage(member.userId) : null;
+              const isSelected =
+                activeChat.type === 'dm' && activeChat.targetUserId === member.userId;
+
+              return (
+                <TouchableOpacity
+                  key={`inbox-dm-${member.id}`}
+                  style={[
+                    styles.inboxCard,
+                    {
+                      backgroundColor: colors.surface,
+                      borderColor: isSelected ? colors.primary : colors.border,
+                      borderRadius: borderRadius.md,
+                    },
+                  ]}
+                  onPress={() => {
+                    if (member.userId) {
+                      switchConversation({
+                        type: 'dm',
+                        targetUserId: member.userId,
+                        targetUserName: name,
+                        targetUserAvatar: member.user?.profile?.avatarUrl,
+                        role: member.role,
+                        department,
+                      });
+                      setMobileTab('chat');
+                    }
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.avatarWrapper}>
+                    <View
+                      style={[
+                        styles.inboxAvatarCircle,
+                        {
+                          backgroundColor: isLeader ? colors.primarySoft : colors.secondarySoft,
+                          borderColor: isLeader ? colors.primary : colors.secondary,
+                        },
+                      ]}
+                    >
+                      <Text
+                        style={{
+                          color: isLeader ? colors.primary : colors.secondary,
+                          fontWeight: '700',
+                          fontSize: 15,
+                        }}
+                      >
+                        {name.charAt(0).toUpperCase()}
+                      </Text>
+                    </View>
+                    <View style={styles.onlineDotLarge} />
+                  </View>
+
+                  <View style={{ flex: 1, marginLeft: 12 }}>
+                    <View style={styles.inboxTitleRow}>
+                      <Text
+                        style={[
+                          typography.body,
+                          {
+                            color: colors.text,
+                            fontWeight: unread > 0 ? '800' : '600',
+                            fontSize: 15,
+                          },
+                        ]}
+                        numberOfLines={1}
+                      >
+                        {name}
+                      </Text>
+                      {lastDm ? (
+                        <Text style={[typography.bodySmall, { color: colors.textMuted, fontSize: 11 }]}>
+                          {formatInboxTime(lastDm.createdAt)}
+                        </Text>
+                      ) : (
+                        <Badge
+                          label={isLeader ? 'Leader' : 'Member'}
+                          variant={isLeader ? 'primary' : 'secondary'}
+                        />
+                      )}
+                    </View>
+
+                    <View style={styles.inboxSnippetRow}>
+                      <Text
+                        style={[
+                          typography.bodySmall,
+                          {
+                            color: unread > 0 ? colors.text : colors.textMuted,
+                            fontWeight: unread > 0 ? '700' : '400',
+                            fontSize: 13,
+                            flex: 1,
+                          },
+                        ]}
+                        numberOfLines={1}
+                      >
+                        {lastDm
+                          ? lastDm.content
+                          : department !== 'Department N/A'
+                          ? department
+                          : 'Tap to start direct conversation'}
+                      </Text>
+
+                      {unread > 0 ? (
+                        <View style={styles.unreadCountBadge}>
+                          <Text style={{ color: '#FFFFFF', fontSize: 11, fontWeight: '700' }}>
+                            {unread}
+                          </Text>
+                        </View>
+                      ) : lastDm ? (
+                        <Badge
+                          label={isLeader ? 'Leader' : 'Member'}
+                          variant={isLeader ? 'primary' : 'secondary'}
+                        />
+                      ) : null}
+                    </View>
+                  </View>
+                </TouchableOpacity>
+              );
+            })
+          )}
+        </View>
+      </ScrollView>
+    );
+  };
+
+  const renderSidebar = () => {
     const isChannelActive = activeChat.type === 'channel';
 
     return (
@@ -706,10 +1137,29 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
       keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
     >
       <AppHeader
-        title={activeChat.type === 'channel' ? projectTitle : activeChat.targetUserName}
-        subtitle={activeChat.type === 'channel' ? 'Team Chat' : 'Direct Message'}
-        showBack={Boolean(navigation?.canGoBack && navigation.canGoBack())}
+        title={
+          !isWide && mobileTab === 'inbox'
+            ? `${projectTitle} Inbox`
+            : activeChat.type === 'channel'
+            ? projectTitle
+            : activeChat.targetUserName
+        }
+        subtitle={
+          !isWide && mobileTab === 'inbox'
+            ? `${confirmedMembers.length} conversations`
+            : activeChat.type === 'channel'
+            ? 'Team Chat'
+            : 'Direct Message'
+        }
+        showBack={Boolean(
+          (!isWide && mobileTab === 'chat') ||
+          (navigation?.canGoBack && navigation.canGoBack())
+        )}
         onBack={() => {
+          if (!isWide && mobileTab === 'chat') {
+            setMobileTab('inbox');
+            return;
+          }
           if (activeChat.type === 'dm') {
             switchConversation({ type: 'channel', id: projectId, title: projectTitle });
           } else {
@@ -723,14 +1173,16 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
                   icon: (
                     <Badge
                       label={
-                        activeChat.type === 'channel'
-                          ? `Inbox (${confirmedMembers.length})`
-                          : `DM: ${activeChat.targetUserName.split(' ')[0]}`
+                        mobileTab === 'inbox'
+                          ? 'Open Chat'
+                          : `Inbox (${confirmedMembers.length})`
                       }
                       variant="secondary"
                     />
                   ),
-                  onPress: () => setShowMobileMembers(true),
+                  onPress: () => {
+                    setMobileTab(mobileTab === 'inbox' ? 'chat' : 'inbox');
+                  },
                   accessibilityLabel: 'Switch Chat',
                 },
               ]
@@ -774,12 +1226,86 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
         navigation={navigation}
       />
 
-      <View style={styles.contentRow}>
-        {/* Left Sidebar on desktop / wide screen */}
-        {isWide && renderSidebar()}
+      {/* Mobile Top Segmented Switcher */}
+      {!isWide && (
+        <View
+          style={[
+            styles.mobileSegmentBar,
+            {
+              backgroundColor: colors.surface,
+              borderBottomColor: colors.border,
+            },
+          ]}
+        >
+          <TouchableOpacity
+            accessibilityRole="tab"
+            accessibilityLabel="Inbox Tab"
+            accessibilityState={{ selected: mobileTab === 'inbox' }}
+            style={[
+              styles.mobileSegmentItem,
+              mobileTab === 'inbox' && {
+                borderBottomColor: colors.primary,
+                borderBottomWidth: 2.5,
+              },
+            ]}
+            onPress={() => setMobileTab('inbox')}
+            activeOpacity={0.7}
+          >
+            <Text
+              style={[
+                typography.label,
+                {
+                  color: mobileTab === 'inbox' ? colors.primary : colors.textMuted,
+                  fontWeight: mobileTab === 'inbox' ? '700' : '600',
+                  fontSize: 13,
+                },
+              ]}
+            >
+              Inbox {totalUnreadDms > 0 ? `(${totalUnreadDms})` : `(${confirmedMembers.length})`}
+            </Text>
+          </TouchableOpacity>
 
-        {/* Right Chat Stream Pane */}
-        <View style={styles.chatPane}>
+          <TouchableOpacity
+            accessibilityRole="tab"
+            accessibilityLabel="Chat Tab"
+            accessibilityState={{ selected: mobileTab === 'chat' }}
+            style={[
+              styles.mobileSegmentItem,
+              mobileTab === 'chat' && {
+                borderBottomColor: colors.primary,
+                borderBottomWidth: 2.5,
+              },
+            ]}
+            onPress={() => setMobileTab('chat')}
+            activeOpacity={0.7}
+          >
+            <Text
+              style={[
+                typography.label,
+                {
+                  color: mobileTab === 'chat' ? colors.primary : colors.textMuted,
+                  fontWeight: mobileTab === 'chat' ? '700' : '600',
+                  fontSize: 13,
+                },
+              ]}
+              numberOfLines={1}
+            >
+              Chat: {activeChat.type === 'channel' ? 'Team Chat' : activeChat.targetUserName}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* Main Content Area */}
+      {!isWide && mobileTab === 'inbox' ? (
+        renderMobileInbox()
+      ) : (
+        <View style={styles.contentRow}>
+          {/* Left Sidebar on desktop / wide screen */}
+          {isWide && renderSidebar()}
+
+          {/* Right Chat Stream Pane */}
+          <View style={styles.chatPane}>
           {/* Date Divider Badge */}
           <View style={styles.dateSeparatorRow}>
             <View
@@ -894,6 +1420,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
           </View>
         </View>
       </View>
+      )}
 
       {/* Mobile Members & Direct Messages Sheet Modal */}
       {!isWide && (
@@ -949,6 +1476,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
                   onPress={() => {
                     switchConversation({ type: 'channel', id: projectId, title: projectTitle });
                     setShowMobileMembers(false);
+                    setMobileTab('chat');
                   }}
                 >
                   <View style={styles.avatarWrapper}>
@@ -1046,6 +1574,7 @@ export const ChatScreen: React.FC<ChatScreenProps> = ({ route, navigation }) => 
                               department,
                             });
                             setShowMobileMembers(false);
+                            setMobileTab('chat');
                           }
                         }}
                       >
@@ -1302,5 +1831,111 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 14,
     borderBottomWidth: 1,
+  },
+  mobileSegmentBar: {
+    flexDirection: 'row',
+    borderBottomWidth: 1,
+  },
+  mobileSegmentItem: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+  },
+  mobileInboxContainer: {
+    flex: 1,
+  },
+  searchBarWrapper: {
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 8,
+  },
+  searchBarContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 14,
+    paddingVertical: 2,
+  },
+  activeNowSection: {
+    paddingVertical: 10,
+  },
+  activeUserBubble: {
+    alignItems: 'center',
+    marginRight: 14,
+  },
+  activeAvatarCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    borderWidth: 1.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  onlineDotLarge: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: '#10B981',
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+  },
+  inboxSection: {
+    paddingHorizontal: 16,
+    marginTop: 12,
+  },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  inboxCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderWidth: 1,
+    marginBottom: 8,
+  },
+  inboxAvatarCircle: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  inboxTitleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  inboxSnippetRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  unreadCountBadge: {
+    backgroundColor: '#EF4444',
+    borderRadius: 10,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    marginLeft: 6,
+  },
+  inboxEmptyCard: {
+    padding: 16,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

@@ -243,4 +243,44 @@ describe('Phase 4 — Team Chat', () => {
       );
     });
   });
+
+  it('renders Messenger-style mobile inbox view and switches to chat thread', async () => {
+    const route = {
+      params: {
+        projectId: 'proj-1',
+        projectTitle: 'Drone Fleet Chat',
+        initialView: 'inbox' as const,
+      },
+    };
+
+    const { getByText, getByPlaceholderText, getByLabelText } = render(
+      <ThemeProvider>
+        <ChatScreen route={route} />
+      </ThemeProvider>
+    );
+
+    await waitFor(() => {
+      expect(getByText('CHANNELS')).toBeTruthy();
+      expect(getByText('Team Chat')).toBeTruthy();
+      expect(getByText('Mahin Khan')).toBeTruthy();
+      expect(getByPlaceholderText('Search conversations & teammates...')).toBeTruthy();
+    });
+
+    // Tap on Mahin Khan in the inbox list to enter direct conversation
+    fireEvent.press(getByText('Mahin Khan'));
+
+    await waitFor(() => {
+      expect(getByText('Direct Message')).toBeTruthy();
+      expect(getByPlaceholderText('Message Mahin...')).toBeTruthy();
+    });
+
+    // Press Inbox tab to return to the inbox list
+    const inboxTab = getByLabelText('Inbox Tab');
+    fireEvent.press(inboxTab);
+
+    await waitFor(() => {
+      expect(getByText('CHANNELS')).toBeTruthy();
+      expect(getByText('Team Chat')).toBeTruthy();
+    });
+  });
 });
