@@ -190,4 +190,78 @@ describe('Notifications (Phase 7 - Feature 15)', () => {
 
     expect(await findByText('Network error')).toBeTruthy();
   });
+
+  it('deep-links to Workspace members when APPLICATION_RECEIVED notification is tapped', async () => {
+    const appNotif: AppNotification = {
+      id: 'notif-app',
+      userId: 'usr-1',
+      title: 'New Team Application',
+      body: 'Bob applied to join Drone Fleet',
+      type: 'APPLICATION_RECEIVED',
+      isRead: false,
+      createdAt: new Date().toISOString(),
+      data: { projectId: 'proj-1', screen: 'Workspace', subscreen: 'Members' },
+    };
+
+    jest.spyOn(notificationService, 'getNotifications').mockResolvedValueOnce({
+      notifications: [appNotif],
+      unreadCount: 1,
+    });
+    jest.spyOn(notificationService, 'markAsRead').mockResolvedValueOnce({ ...appNotif, isRead: true });
+
+    const { findByText, getByTestId } = render(
+      <ThemeProvider>
+        <NotificationsScreen />
+      </ThemeProvider>
+    );
+
+    await findByText('New Team Application');
+    fireEvent.press(getByTestId('notification-item-notif-app'));
+
+    await waitFor(() => {
+      expect(mockNavigation.navigate).toHaveBeenCalledWith('Workspace', {
+        screen: 'Members',
+        params: { projectId: 'proj-1' },
+      });
+    });
+  });
+
+  it('deep-links to Chat when DIRECT_MESSAGE notification is tapped', async () => {
+    const dmNotif: AppNotification = {
+      id: 'notif-dm',
+      userId: 'usr-1',
+      title: 'New message from Alice',
+      body: 'Hey, let us team up!',
+      type: 'DIRECT_MESSAGE',
+      isRead: false,
+      createdAt: new Date().toISOString(),
+      data: { projectId: 'proj-1', targetUserId: 'usr-alice', screen: 'Chat', type: 'dm' },
+    };
+
+    jest.spyOn(notificationService, 'getNotifications').mockResolvedValueOnce({
+      notifications: [dmNotif],
+      unreadCount: 1,
+    });
+    jest.spyOn(notificationService, 'markAsRead').mockResolvedValueOnce({ ...dmNotif, isRead: true });
+
+    const { findByText, getByTestId } = render(
+      <ThemeProvider>
+        <NotificationsScreen />
+      </ThemeProvider>
+    );
+
+    await findByText('New message from Alice');
+    fireEvent.press(getByTestId('notification-item-notif-dm'));
+
+    await waitFor(() => {
+      expect(mockNavigation.navigate).toHaveBeenCalledWith('Workspace', {
+        screen: 'Chat',
+        params: {
+          projectId: 'proj-1',
+          initialView: 'chat',
+          targetUserId: 'usr-alice',
+        },
+      });
+    });
+  });
 });

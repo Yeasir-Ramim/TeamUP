@@ -4,12 +4,14 @@ import {
   SubscribeMessage,
   OnGatewayConnection,
   OnGatewayDisconnect,
+  OnGatewayInit,
   ConnectedSocket,
   MessageBody,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { JwtService } from '@nestjs/jwt';
 import { ChatService } from './chat.service';
+import { NotificationsService } from '../notifications/notifications.service';
 
 interface SendMessagePayload {
   projectId?: string;
@@ -27,14 +29,21 @@ interface JoinRoomPayload {
   },
   namespace: '/chat',
 })
-export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
+export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect, OnGatewayInit {
   @WebSocketServer()
   server: Server;
 
   constructor(
     private readonly chatService: ChatService,
     private readonly jwtService: JwtService,
+    private readonly notificationsService: NotificationsService,
   ) {}
+
+  afterInit(server: Server) {
+    this.notificationsService.setBroadcaster((userId: string, notification: any) => {
+      this.server?.to(`user:${userId}`).emit('notification', notification);
+    });
+  }
 
   async handleConnection(client: Socket) {
     try {

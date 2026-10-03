@@ -21,6 +21,8 @@ import { SearchBar } from '../../components/SearchBar';
 import { SegmentedControl } from '../../components/SegmentedControl';
 import { StateWrapper, ScreenState } from '../../components/StateWrapper';
 import { projectService, Project } from '../../services/projectService';
+import { notificationService } from '../../services/notificationService';
+import { socketService } from '../../services/socketService';
 import { useAuth } from '../../context/AuthContext';
 
 export interface MarketplaceScreenProps {
@@ -40,6 +42,41 @@ export const MarketplaceScreen: React.FC<MarketplaceScreenProps> = ({ navigation
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDomain, setSelectedDomain] = useState('All');
   const [refreshing, setRefreshing] = useState(false);
+  const [unreadCount, setUnreadCount] = useState<number>(0);
+
+  useEffect(() => {
+    let isMounted = true;
+    notificationService
+      .getUnreadCount()
+      .then((count) => {
+        if (isMounted) setUnreadCount(count);
+      })
+      .catch(() => {});
+
+    const unsubscribe = socketService.onNotification(() => {
+      if (isMounted) {
+        setUnreadCount((prev) => prev + 1);
+      }
+    });
+
+    return () => {
+      isMounted = false;
+      unsubscribe();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!navigation?.addListener) return;
+    const unsubscribeFocus = navigation.addListener('focus', () => {
+      notificationService
+        .getUnreadCount()
+        .then((count) => {
+          setUnreadCount(count);
+        })
+        .catch(() => {});
+    });
+    return unsubscribeFocus;
+  }, [navigation]);
 
   const greeting = useMemo(() => {
     const hour = new Date().getHours();
@@ -501,10 +538,38 @@ export const MarketplaceScreen: React.FC<MarketplaceScreenProps> = ({ navigation
                     borderColor: colors.border,
                     borderWidth: 1,
                     borderRadius: borderRadius.md,
+                    position: 'relative',
                   },
                 ]}
               >
                 <Bell size={18} color={colors.text} />
+                {unreadCount > 0 && (
+                  <View
+                    testID="unread-badge"
+                    style={{
+                      position: 'absolute',
+                      top: -4,
+                      right: -4,
+                      backgroundColor: colors.error || '#ef4444',
+                      borderRadius: 9,
+                      minWidth: 18,
+                      height: 18,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      paddingHorizontal: 4,
+                    }}
+                  >
+                    <Text
+                      style={{
+                        color: '#ffffff',
+                        fontSize: 10,
+                        fontWeight: '700',
+                      }}
+                    >
+                      {unreadCount > 99 ? '99+' : unreadCount}
+                    </Text>
+                  </View>
+                )}
               </TouchableOpacity>
 
               <TouchableOpacity

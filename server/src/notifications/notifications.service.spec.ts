@@ -267,6 +267,29 @@ describe('NotificationsService', () => {
       });
     });
 
+    it('should invoke real-time broadcaster when registered', async () => {
+      const mockSaved = {
+        id: 'notif-ws',
+        userId: 'u-1',
+        title: 'Application Accepted',
+        body: 'You have been accepted',
+        type: 'APPLICATION_ACCEPTED',
+        data: {},
+      };
+      mockPrismaService.notification.create.mockResolvedValue(mockSaved);
+
+      const mockBroadcaster = jest.fn();
+      service.setBroadcaster(mockBroadcaster);
+
+      await service.notifyUser('u-1', {
+        title: 'Application Accepted',
+        body: 'You have been accepted',
+        type: 'APPLICATION_ACCEPTED',
+      });
+
+      expect(mockBroadcaster).toHaveBeenCalledWith('u-1', mockSaved);
+    });
+
     it('should dispatch push notifications to Expo and prune stale tokens on DeviceNotRegistered', async () => {
       const originalFetch = global.fetch;
       mockPrismaService.pushToken.findMany.mockResolvedValue([

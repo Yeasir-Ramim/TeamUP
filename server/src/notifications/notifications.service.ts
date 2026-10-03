@@ -8,11 +8,19 @@ import { SendNotificationDto } from './dto/send-notification.dto';
 @Injectable()
 export class NotificationsService {
   private readonly logger = new Logger(NotificationsService.name);
+  private broadcaster?: (userId: string, notification: any) => void;
 
   constructor(
     private readonly prisma: PrismaService,
     private readonly configService: ConfigService,
   ) {}
+
+  /**
+   * Set a real-time broadcast callback for websocket delivery
+   */
+  setBroadcaster(broadcaster: (userId: string, notification: any) => void) {
+    this.broadcaster = broadcaster;
+  }
 
   /**
    * Register a mobile device push token (idempotent upsert)
@@ -185,6 +193,17 @@ export class NotificationsService {
         data: dto.data ?? {},
       },
     });
+
+    // Broadcast real-time event to active WebSocket clients if broadcaster is attached
+    if (this.broadcaster) {
+      try {
+        this.broadcaster(userId, notification);
+      } catch (err: unknown) {
+        this.logger.warn(
+          `Failed to broadcast real-time notification to user ${userId}: ${(err as Error).message}`,
+        );
+      }
+    }
 
     // Asynchronously dispatch push alert without blocking database transaction
     void this.dispatchPushNotification(userId, dto);

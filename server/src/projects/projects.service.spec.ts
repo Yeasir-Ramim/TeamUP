@@ -3,8 +3,14 @@ import { ProjectsService } from './projects.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { ProjectStatus } from '@prisma/client';
 
+import { NotificationsService } from '../notifications/notifications.service';
+
 describe('ProjectsService - Search & Multi-criteria Filters', () => {
   let service: ProjectsService;
+
+  const mockNotificationsService = {
+    notifyUser: jest.fn().mockResolvedValue({ id: 'notif-1' }),
+  };
 
   const mockPrismaService = {
     project: {
@@ -13,11 +19,20 @@ describe('ProjectsService - Search & Multi-criteria Filters', () => {
       findFirst: jest.fn(),
       count: jest.fn(),
     },
+    user: {
+      findUnique: jest.fn(),
+    },
     projectMember: {
       findFirst: jest.fn(),
       findMany: jest.fn(),
+      findUnique: jest.fn(),
+      create: jest.fn(),
+      update: jest.fn(),
       count: jest.fn(),
       delete: jest.fn(),
+    },
+    notification: {
+      create: jest.fn(),
     },
   };
 
@@ -28,6 +43,7 @@ describe('ProjectsService - Search & Multi-criteria Filters', () => {
       providers: [
         ProjectsService,
         { provide: PrismaService, useValue: mockPrismaService },
+        { provide: NotificationsService, useValue: mockNotificationsService },
       ],
     }).compile();
 
@@ -269,8 +285,88 @@ describe('ProjectsService - Search & Multi-criteria Filters', () => {
         .mockResolvedValueOnce(2); // otherMembers = 2
 
       await expect(
-        service.leaveProject('proj-1', 'user-leader')
-      ).rejects.toThrow('As the sole leader, you must promote another member to leader before leaving.');
+        service.leaveProject('proj-1', 'user-leader'),
+      ).rejects.toThrow(
+        'As the sole leader, you must promote another member to leader before leaving.',
+      );
+    });
+  });
+
+  describe('Notifications Integration', () => {
+    it('should notify project leaders when a student applies', async () => {
+      mockPrismaService.project.findUnique.mockResolvedValue({
+        id: 'proj-1',
+        title: 'Drone Fleet',
+        creatorId: 'leader-1',
+        status: ProjectStatus.OPEN,
+        maxMembers: 4,
+        _count: { members: 1 },
+      });
+      mockPrismaService.projectMember.findUnique.mockResolvedValue(null);
+      mockPrismaService.projectMember.create.mockResolvedValue({
+        id: 'mem-new',
+        projectId: 'proj-1',
+        userId: 'applicant-1',
+        role: 'MEMBER',
+        status: 'PENDING',
+      });
+      mockPrismaService.user.findUnique.mockResolvedValue({
+        id: 'applicant-1',
+        email: 'applicant@uni.edu',
+        profile: { fullName: 'Bob Student' },
+      });
+      mockPrismaService.projectMember.findMany.mockResolvedValue([
+        { userId: 'leader-1' },
+      ]);
+
+      await service.applyToProject('proj-1', 'applicant-1');
+
+      expect(mockNotificationsService.notifyUser).toHaveBeenCalledWith(
+        'leader-1',
+        expect.objectContaining({
+          type: 'APPLICATION_RECEIVED',
+          title: 'New Team Application',
+          body: 'Bob Student applied to join Drone Fleet',
+        }),
+      );
+    });
+
+    it('should notify applicant when application is accepted or rejected', async () => {
+      mockPrismaService.project.findUnique.mockResolvedValue({
+        id: 'proj-1',
+        title: 'Drone Fleet',
+        creatorId: 'leader-1',
+        maxMembers: 4,
+        _count: { members: 1 },
+      });
+      mockPrismaService.projectMember.findFirst
+        .mockResolvedValueOnce({
+          id: 'mem-leader',
+          role: 'LEADER',
+          status: 'ACCEPTED',
+        })
+        .mockResolvedValueOnce({
+          id: 'mem-applicant',
+          userId: 'applicant-1',
+          role: 'MEMBER',
+          status: 'PENDING',
+        });
+      mockPrismaService.projectMember.update.mockResolvedValue({
+        id: 'mem-applicant',
+        status: 'ACCEPTED',
+      });
+
+      await service.updateMember('proj-1', 'mem-applicant', 'leader-1', {
+        status: 'ACCEPTED' as any,
+      });
+
+      expect(mockNotificationsService.notifyUser).toHaveBeenCalledWith(
+        'applicant-1',
+        expect.objectContaining({
+          type: 'APPLICATION_ACCEPTED',
+          title: 'Application Accepted',
+        }),
+      );
     });
   });
 });

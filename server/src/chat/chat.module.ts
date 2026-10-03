@@ -5,10 +5,12 @@ import { ChatService } from './chat.service';
 import { ChatController } from './chat.controller';
 import { DirectMessageController } from './direct-message.controller';
 import { PrismaModule } from '../prisma/prisma.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
   imports: [
     PrismaModule,
+    NotificationsModule,
     JwtModule.register({
       secret:
         process.env.JWT_ACCESS_SECRET ||

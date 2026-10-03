@@ -1,10 +1,14 @@
 import { Injectable, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { MemberStatus } from '@prisma/client';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class ChatService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly notificationsService: NotificationsService,
+  ) {}
 
   /**
    * Verify user is a member of the project
@@ -166,6 +170,22 @@ export class ChatService {
             },
           },
         },
+      },
+    });
+
+    const senderName =
+      dm.sender?.profile?.fullName || dm.sender?.email || 'Someone';
+
+    await this.notificationsService.notifyUser(recipientId, {
+      title: `New message from ${senderName}`,
+      body: content.length > 100 ? `${content.substring(0, 97)}...` : content,
+      type: 'DIRECT_MESSAGE',
+      data: {
+        senderId,
+        projectId: projectId || undefined,
+        screen: 'Chat',
+        type: 'dm',
+        targetUserId: senderId,
       },
     });
 
